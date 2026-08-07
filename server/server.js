@@ -5,6 +5,7 @@ require("dotenv").config();
 const connectDB = require("./config/db");
 const errorMiddleware = require("./middleware/errorMiddleware");
 const authRoutes = require("./routes/authRoutes");
+const memberRoutes = require("./routes/memberRoutes");
 
 connectDB();
 
@@ -17,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+app.use("/api/members", memberRoutes);
 
 app.get("/", (req, res) => {
   res.send("Role-Based Management System API is running...");
