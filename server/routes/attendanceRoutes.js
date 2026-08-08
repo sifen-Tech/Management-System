@@ -4,6 +4,7 @@ const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
 const authorize = require("../middleware/roleMiddleware");
+const { validateAttendance } = require("../middleware/validationMiddleware");
 
 const {
   markAttendance,
@@ -29,6 +30,7 @@ router.put(
   "/:id",
   authMiddleware,
   authorize("admin", "supervisor"),
+  validateAttendance,
   updateAttendance,
 );
 
