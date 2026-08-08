@@ -8,6 +8,8 @@ const authRoutes = require("./routes/authRoutes");
 const memberRoutes = require("./routes/memberRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 
+const userRoutes = require("./routes/userRoutes");
+
 connectDB();
 
 const app = express();
@@ -21,6 +23,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("Role-Based Management System API is running...");
