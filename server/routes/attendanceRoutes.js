@@ -16,6 +16,7 @@ router.post(
   "/",
   authMiddleware,
   authorize("admin", "supervisor"),
+  validateAttendance,
   markAttendance,
 );
 

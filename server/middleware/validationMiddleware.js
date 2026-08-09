@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const validateSignup = (req, res, next) => {
   const { fullName, email, password, division, year } = req.body;
 
@@ -59,7 +60,6 @@ const validateMember = (req, res, next) => {
     errors.email = "Email is required";
   } else {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
     if (!emailRegex.test(email)) {
       errors.email = "Please enter a valid email address";
     }
@@ -89,7 +89,6 @@ const validateMember = (req, res, next) => {
 
   next();
 };
-const mongoose = require("mongoose");
 
 const validateAttendance = (req, res, next) => {
   const { member, date, status } = req.body;
