@@ -3,7 +3,18 @@ const Member = require("../models/Member");
 
 const markAttendance = async (req, res) => {
   try {
+    console.log("Authenticated user:", req.user);
+
     const { member, date, status } = req.body;
+
+    const existingMember = await Member.findById(member);
+
+    if (!existingMember) {
+      return res.status(404).json({
+        success: false,
+        message: "Member not found",
+      });
+    }
 
     const attendance = await Attendance.create({
       member,
@@ -79,6 +90,7 @@ const updateAttendance = async (req, res) => {
     });
   }
 };
+
 module.exports = {
   markAttendance,
   getAllAttendance,
