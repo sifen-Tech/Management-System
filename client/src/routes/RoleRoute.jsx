@@ -1,7 +1,7 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const RoleRoute = ({ allowedRoles }) => {
+const RoleRoute = ({ allowedRoles, children }) => {
   const { user } = useAuth();
 
   if (!user) {
@@ -12,7 +12,7 @@ const RoleRoute = ({ allowedRoles }) => {
     return <Navigate to="/access-denied" replace />;
   }
 
-  return <Outlet />;
+  return children;
 };
 
 export default RoleRoute;
