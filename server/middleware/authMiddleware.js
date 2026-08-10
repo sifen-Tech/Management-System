@@ -2,11 +2,22 @@ const jwt = require("jsonwebtoken");
 
 const authMiddleware = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "No token provided. Authorization header format must be 'Bearer <token>'.",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({
-        message: "No token provided. Please login first.",
+        success: false,
+        message: "Token missing from Authorization header.",
       });
     }
 
@@ -16,8 +27,16 @@ const authMiddleware = (req, res, next) => {
 
     next();
   } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token has expired. Please log in again.",
+      });
+    }
+
     return res.status(401).json({
-      message: "Invalid or expired token",
+      success: false,
+      message: "Invalid or expired token.",
     });
   }
 };

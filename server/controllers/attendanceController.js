@@ -7,6 +7,10 @@ const markAttendance = async (req, res) => {
 
     const { member, date, status } = req.body;
 
+    const attendanceDate = date ? new Date(date) : new Date();
+
+    attendanceDate.setHours(0, 0, 0, 0);
+
     const existingMember = await Member.findById(member);
 
     if (!existingMember) {
@@ -18,7 +22,7 @@ const markAttendance = async (req, res) => {
 
     const attendance = await Attendance.create({
       member,
-      date,
+      date: attendanceDate,
       status,
       markedBy: req.user.id,
     });
@@ -32,7 +36,17 @@ const markAttendance = async (req, res) => {
       attendance: result,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Attendance has already been marked for this member today",
+      });
+    }
+
+    console.error("Mark attendance error:", error);
+
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -50,7 +64,10 @@ const getAllAttendance = async (req, res) => {
       attendance,
     });
   } catch (error) {
+    console.error("Get attendance error:", error);
+
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
@@ -60,12 +77,21 @@ const updateAttendance = async (req, res) => {
   try {
     const { status, date } = req.body;
 
+    const updateData = {};
+
+    if (status !== undefined) {
+      updateData.status = status;
+    }
+
+    if (date !== undefined) {
+      const attendanceDate = new Date(date);
+      attendanceDate.setHours(0, 0, 0, 0);
+      updateData.date = attendanceDate;
+    }
+
     const attendance = await Attendance.findByIdAndUpdate(
       req.params.id,
-      {
-        status,
-        date,
-      },
+      updateData,
       {
         new: true,
         runValidators: true,
@@ -76,6 +102,7 @@ const updateAttendance = async (req, res) => {
 
     if (!attendance) {
       return res.status(404).json({
+        success: false,
         message: "Attendance record not found",
       });
     }
@@ -85,7 +112,18 @@ const updateAttendance = async (req, res) => {
       attendance,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Attendance has already been marked for this member on this date",
+      });
+    }
+
+    console.error("Update attendance error:", error);
+
     res.status(500).json({
+      success: false,
       message: error.message,
     });
   }
