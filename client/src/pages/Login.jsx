@@ -1,26 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
 
 const Login = () => {
-  const navigate = useNavigate();
-  const { login } = useAuth();
-
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,16 +20,20 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await api.post("/auth/login", formData);
+      const response = await api.post("/auth/login", {
+        email,
+        password,
+      });
 
-      const { token, user } = response.data;
+      const { user, token } = response.data;
 
       login(user, token);
 
       navigate("/dashboard");
     } catch (error) {
       setError(
-        error.response?.data?.message || "Login failed. Please try again.",
+        error.response?.data?.message ||
+          "Login failed. Please check your email and password.",
       );
     } finally {
       setLoading(false);
@@ -53,26 +48,26 @@ const Login = () => {
 
       <form onSubmit={handleSubmit}>
         <div>
-          <label>Email</label>
+          <label htmlFor="email">Email</label>
 
           <input
+            id="email"
             type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email"
           />
         </div>
 
         <div>
-          <label>Password</label>
+          <label htmlFor="password">Password</label>
 
           <input
+            id="password"
             type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
           />
         </div>
 
@@ -83,7 +78,9 @@ const Login = () => {
 
       <p>
         Don't have an account?{" "}
-        <button onClick={() => navigate("/signup")}>Sign up</button>
+        <button type="button" onClick={() => navigate("/signup")}>
+          Sign up
+        </button>
       </p>
     </div>
   );
