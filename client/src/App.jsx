@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import Layout from "./components/Layout";
+import DashboardLayout from "./Layouts/DashboardLayout";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -52,10 +52,12 @@ const AppRoutes = () => {
       <Route path="/signup" element={<Signup />} />
       <Route path="/access-denied" element={<AccessDenied />} />
 
-      {/* Protected Routes Wrapped in Layout */}
+      {/* Protected Routes Wrapped in DashboardLayout */}
       <Route element={<ProtectedRoute />}>
         <Route
-          element={<Layout menuItems={menuItems} onLogout={handleLogout} />}
+          element={
+            <DashboardLayout menuItems={menuItems} onLogout={handleLogout} />
+          }
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<Members />} />

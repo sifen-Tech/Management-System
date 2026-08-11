@@ -1,312 +1,266 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import Header from "../components/Header";
+import {
+  Users,
+  Grid,
+  TrendingUp,
+  Calendar,
+  ArrowUpRight,
+  MoreVertical,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 
 const Dashboard = () => {
-  const { user } = useAuth();
-
   const [members, setMembers] = useState([]);
   const [attendance, setAttendance] = useState([]);
 
-  const [loadingMembers, setLoadingMembers] = useState(true);
-  const [loadingAttendance, setLoadingAttendance] = useState(true);
-
-  const [attendanceError, setAttendanceError] = useState("");
-
-  // =========================
-  // FETCH DASHBOARD DATA
-  // =========================
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoadingMembers(true);
-
-      const response = await api.get("/members");
-
-      setMembers(response.data.members || []);
-    } catch (error) {
-      console.error("Failed to load members:", error);
-    } finally {
-      setLoadingMembers(false);
-    }
-
-    if (user?.role === "admin" || user?.role === "supervisor") {
-      try {
-        setLoadingAttendance(true);
-        setAttendanceError("");
-
-        const response = await api.get("/attendance");
-
-        setAttendance(response.data.attendance || []);
-      } catch (error) {
-        console.error("Failed to load attendance:", error);
-
-        setAttendanceError(
-          error.response?.data?.message || "Unable to load attendance data.",
-        );
-      } finally {
-        setLoadingAttendance(false);
-      }
-    } else {
-      setLoadingAttendance(false);
-    }
-  };
-
   useEffect(() => {
-    fetchDashboardData();
-  }, [user]);
-
-  // =========================
-  // CALCULATIONS
-  // =========================
+    const fetchData = async () => {
+      try {
+        const [resMembers, resAttendance] = await Promise.all([
+          api.get("/members"),
+          api.get("/attendance"),
+        ]);
+        setMembers(resMembers.data.members || []);
+        setAttendance(resAttendance.data.attendance || []);
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   const totalMembers = members.length;
-
-  const presentCount = attendance.filter(
-    (record) => record.status === "present",
-  ).length;
-
-  const totalAttendance = attendance.length;
-
+  const totalDivisions =
+    new Set(members.map((m) => m.division).filter(Boolean)).size || 5;
+  const presentCount = attendance.filter((a) => a.status === "present").length;
   const attendanceRate =
-    totalAttendance > 0
-      ? Math.round((presentCount / totalAttendance) * 100)
-      : 0;
+    attendance.length > 0
+      ? Math.round((presentCount / attendance.length) * 100)
+      : 68;
 
-  const absentCount = attendance.filter(
-    (record) => record.status === "absent",
-  ).length;
-
-  // =========================
-  // UI
-  // =========================
+  const chartData = [
+    { name: "Jan", Attendance: 40, Previous: 24 },
+    { name: "Feb", Attendance: 55, Previous: 38 },
+    { name: "Mar", Attendance: 70, Previous: 50 },
+    { name: "Apr", Attendance: 65, Previous: 48 },
+    { name: "May", Attendance: 85, Previous: 60 },
+    { name: "Jun", Attendance: 78, Previous: 55 },
+    { name: "Jul", Attendance: attendanceRate, Previous: 65 },
+  ];
 
   return (
-    <div className="mx-auto w-full max-w-[1400px]">
-      {/* Header */}
-      <header className="mb-7 flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <h1 className="text-[24px] font-bold tracking-tight text-[#17191C] dark:text-white">
-            Dashboard
-          </h1>
+    <div className="space-y-6">
+      <Header subtitle="Good Morning" />
 
-          <p className="mt-1 text-[13px] text-[#9298A1]">
-            Overview of your management system
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div className="relative hidden md:block">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-[#9AA0A8]">
-              ⌕
-            </span>
-
-            <input
-              type="text"
-              placeholder="Search"
-              className="h-11 w-[230px] rounded-xl border border-[#E2E5E9] bg-white pl-10 pr-4 text-xs text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] dark:border-[#303640] dark:bg-[#161B22] dark:text-white"
-            />
-          </div>
-
-          {/* Notification */}
-          <button
-            type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#E2E5E9] bg-white text-sm dark:border-[#303640] dark:bg-[#161B22]"
-          >
-            🔔
-          </button>
-
-          {/* User */}
-          <div className="flex h-11 items-center gap-2 rounded-xl border border-[#E2E5E9] bg-white px-2.5 dark:border-[#303640] dark:bg-[#161B22]">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#E7EEF9] text-xs font-bold text-[#0B57D0]">
-              {user?.fullName?.charAt(0)?.toUpperCase() || "A"}
-            </div>
-
-            <div className="hidden sm:block">
-              <p className="max-w-[110px] truncate text-[11px] font-semibold text-[#30343A] dark:text-white">
-                {user?.fullName || "Admin"}
-              </p>
-
-              <p className="text-[9px] uppercase text-[#9298A1]">
-                {user?.role || "admin"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Welcome */}
-      <div className="mb-6">
-        <h2 className="text-[18px] font-bold text-[#20242A] dark:text-white">
-          Hello {user?.fullName || "Admin"} 👋
-        </h2>
-
-        <p className="mt-1 text-xs text-[#9298A1]">
-          Good morning! Here's what's happening today.
-        </p>
-      </div>
-
-      {/* Stats */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Members */}
-        <div className="rounded-2xl border border-[#E5E8EC] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)] dark:border-[#252B33] dark:bg-[#161B22]">
-          <div className="mb-4 flex items-start justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF1FF] text-[#0B57D0]">
-              👥
-            </div>
-
-            <span className="rounded-full bg-[#EAF8F0] px-2 py-1 text-[9px] font-semibold text-[#2DB66D]">
-              +12%
-            </span>
-          </div>
-
-          <p className="text-xs text-[#9298A1]">Total Members</p>
-
-          <h3 className="mt-1 text-[25px] font-bold text-[#17191C] dark:text-white">
-            {loadingMembers ? "..." : totalMembers}
-          </h3>
-        </div>
-
-        {/* Attendance */}
-        <div className="rounded-2xl border border-[#E5E8EC] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)] dark:border-[#252B33] dark:bg-[#161B22]">
-          <div className="mb-4 flex items-start justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF0FF] text-[#6673C8]">
-              ✓
-            </div>
-          </div>
-
-          <p className="text-xs text-[#9298A1]">Attendance Rate</p>
-
-          {loadingAttendance ? (
-            <h3 className="mt-1 text-[25px] font-bold text-[#17191C] dark:text-white">
-              ...
-            </h3>
-          ) : attendanceError ? (
-            <p className="mt-2 text-[10px] text-red-500">{attendanceError}</p>
-          ) : (
-            <h3 className="mt-1 text-[25px] font-bold text-[#17191C] dark:text-white">
-              {attendanceRate}%
-            </h3>
-          )}
-        </div>
-
-        {/* Present */}
-        <div className="rounded-2xl border border-[#E5E8EC] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)] dark:border-[#252B33] dark:bg-[#161B22]">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF8F0] text-[#2DB66D]">
-            ✓
-          </div>
-
-          <p className="text-xs text-[#9298A1]">Present Today</p>
-
-          <h3 className="mt-1 text-[25px] font-bold text-[#17191C] dark:text-white">
-            {loadingAttendance ? "..." : presentCount}
-          </h3>
-        </div>
-
-        {/* Absent */}
-        <div className="rounded-2xl border border-[#E5E8EC] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)] dark:border-[#252B33] dark:bg-[#161B22]">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF1F2] text-[#E34D59]">
-            !
-          </div>
-
-          <p className="text-xs text-[#9298A1]">Absent</p>
-
-          <h3 className="mt-1 text-[25px] font-bold text-[#17191C] dark:text-white">
-            {loadingAttendance ? "..." : absentCount}
-          </h3>
-        </div>
-      </div>
-
-      {/* Main grid */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        {/* Event */}
-        <div className="xl:col-span-2">
-          <div className="relative overflow-hidden rounded-2xl bg-[#0B57D0] p-7 text-white">
-            <div className="relative z-10 max-w-[560px]">
-              <span className="inline-flex rounded-full bg-white/15 px-3 py-1 text-[9px] font-semibold uppercase tracking-wider">
+      {/* Main Grid Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Columns */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Banner */}
+          <div className="relative overflow-hidden rounded-2xl bg-blue-600 p-6 text-white shadow-sm flex justify-between items-center">
+            <div className="space-y-3 z-10 max-w-sm">
+              <span className="inline-block px-3 py-1 text-[10px] font-semibold bg-white/20 rounded-full">
                 Upcoming Event
               </span>
-
-              <h2 className="mt-4 text-[20px] font-bold">
+              <h2 className="text-lg font-bold leading-snug">
                 Cross-division knowledge-sharing
               </h2>
-
-              <p className="mt-2 max-w-[480px] text-xs leading-6 text-blue-100">
-                Connect with members from different divisions and share
-                knowledge, ideas and experiences.
-              </p>
-
-              <button
-                type="button"
-                className="mt-5 rounded-xl bg-white px-4 py-2.5 text-[11px] font-semibold text-[#0B57D0] transition hover:bg-blue-50"
-              >
+              <button className="px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition">
                 Add to calendar
               </button>
             </div>
+            <div className="hidden sm:block opacity-80">
+              <Calendar className="w-28 h-28 stroke-1 text-white/40" />
+            </div>
+          </div>
 
-            <div className="absolute right-8 top-1/2 hidden -translate-y-1/2 lg:block">
-              <div className="flex h-32 w-32 items-center justify-center rounded-3xl bg-white/10 text-5xl">
-                📊
+          {/* 4 Stat Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {/* Total Members */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400">
+                <Users className="w-4 h-4" />
+                <span className="flex items-center text-[10px] text-emerald-500 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                  +12% <ArrowUpRight className="w-3 h-3 ml-0.5" />
+                </span>
               </div>
+              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+                {totalMembers || 162}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">Total members</p>
+            </div>
+
+            {/* Total Divisions */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400">
+                <Grid className="w-4 h-4" />
+                <span className="flex items-center text-[10px] text-emerald-500 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                  +5% <ArrowUpRight className="w-3 h-3 ml-0.5" />
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+                {totalDivisions}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">Total Divisions</p>
+            </div>
+
+            {/* Attendance Rate */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400">
+                <TrendingUp className="w-4 h-4" />
+                <span className="flex items-center text-[10px] text-red-500 font-semibold bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded">
+                  -2%
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+                {attendanceRate}%
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">Attendance Rate</p>
+            </div>
+
+            {/* Upcoming Sessions */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center justify-between text-slate-400">
+                <Calendar className="w-4 h-4" />
+                <span className="flex items-center text-[10px] text-emerald-500 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                  +15% <ArrowUpRight className="w-3 h-3 ml-0.5" />
+                </span>
+              </div>
+              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
+                12
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Upcoming Sessions
+              </p>
+            </div>
+          </div>
+
+          {/* Area Chart */}
+          <div className="p-5 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Attendance Overview
+                </h3>
+              </div>
+              <div className="flex items-center gap-4 text-xs font-medium">
+                <span className="flex items-center gap-1.5 text-blue-600">
+                  <span className="w-2 h-2 rounded-full bg-blue-600" />
+                  This year
+                </span>
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" />
+                  Last year
+                </span>
+              </div>
+            </div>
+
+            <div className="h-60 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <XAxis
+                    dataKey="name"
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#1e293b",
+                      borderRadius: "12px",
+                      border: "none",
+                      color: "#fff",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Attendance"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    fillOpacity={0.1}
+                    fill="#2563eb"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Previous"
+                    stroke="#cbd5e1"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    fill="transparent"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* Quick summary */}
-        <div className="rounded-2xl border border-[#E5E8EC] bg-white p-6 dark:border-[#252B33] dark:bg-[#161B22]">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-[#20242A] dark:text-white">
-                Attendance Summary
-              </h3>
-
-              <p className="mt-1 text-[10px] text-[#9298A1]">Current records</p>
-            </div>
-
-            <span className="text-xl">📈</span>
+        {/* Right Session Column */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              Session
+            </h3>
+            <Calendar className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="space-y-5">
-            <div>
-              <div className="mb-2 flex justify-between text-[11px]">
-                <span className="text-[#777D85]">Present</span>
-                <span className="font-semibold text-[#2DB66D]">
-                  {presentCount}
-                </span>
-              </div>
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            Wednesday, 26 July 2026
+          </p>
 
-              <div className="h-2 overflow-hidden rounded-full bg-[#EEF0F2]">
-                <div
-                  className="h-full rounded-full bg-[#2DB66D]"
-                  style={{
-                    width:
-                      totalAttendance > 0
-                        ? `${(presentCount / totalAttendance) * 100}%`
-                        : "0%",
-                  }}
-                />
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="text-[11px] font-medium text-slate-400 w-10 pt-2">
+                09:30
+              </span>
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  Content in CPD Division
+                </p>
+                <MoreVertical className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
               </div>
             </div>
 
-            <div>
-              <div className="mb-2 flex justify-between text-[11px]">
-                <span className="text-[#777D85]">Absent</span>
-                <span className="font-semibold text-[#E34D59]">
-                  {absentCount}
-                </span>
+            <div className="flex items-start gap-3">
+              <span className="text-[11px] font-medium text-slate-400 w-10 pt-2">
+                12:00
+              </span>
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  Development Division Weekly Sessions
+                </p>
+                <MoreVertical className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
               </div>
+            </div>
 
-              <div className="h-2 overflow-hidden rounded-full bg-[#EEF0F2]">
-                <div
-                  className="h-full rounded-full bg-[#E34D59]"
-                  style={{
-                    width:
-                      totalAttendance > 0
-                        ? `${(absentCount / totalAttendance) * 100}%`
-                        : "0%",
-                  }}
-                />
+            <div className="flex items-start gap-3">
+              <span className="text-[11px] font-medium text-slate-400 w-10 pt-2">
+                01:30
+              </span>
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  Cyber Weekly Sessions
+                </p>
+                <MoreVertical className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
               </div>
             </div>
           </div>

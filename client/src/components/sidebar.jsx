@@ -1,100 +1,101 @@
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
+import {
+  LayoutDashboard,
+  Users,
+  CalendarCheck,
+  Settings,
+  Sun,
+  Moon,
+  LogOut,
+} from "lucide-react";
 
-const Sidebar = ({ menuItems, onLogout }) => {
+const Sidebar = ({ menuItems = [], onLogout }) => {
   const { theme, toggleTheme } = useTheme();
 
+  const getIcon = (label) => {
+    const lower = label?.toLowerCase() || "";
+    if (lower.includes("dashboard"))
+      return <LayoutDashboard className="w-4 h-4" />;
+    if (lower.includes("member")) return <Users className="w-4 h-4" />;
+    if (lower.includes("attendance"))
+      return <CalendarCheck className="w-4 h-4" />;
+    if (lower.includes("setting")) return <Settings className="w-4 h-4" />;
+    return null;
+  };
+
   return (
-    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[250px] flex-col border-r border-[#E8EAED] bg-white px-5 py-6 dark:border-[#252B33] dark:bg-[#11161D] lg:flex">
-      {/* Logo */}
-      <div className="mb-9 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B57D0] text-lg font-bold text-white">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[240px] flex-col border-r border-slate-200/80 bg-white px-5 py-6 dark:border-slate-800 dark:bg-[#11161D]">
+      {/* Brand Header */}
+      <div className="mb-8 flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-sm">
           L
         </div>
-
         <div>
-          <h1 className="text-[15px] font-bold text-[#17191C] dark:text-white">
+          <h1 className="text-sm font-bold text-slate-900 dark:text-white">
             Logoipsum
           </h1>
-
-          <p className="mt-0.5 text-[10px] text-[#9AA0A8]">Management System</p>
+          <p className="text-[10px] text-slate-400">Management System</p>
         </div>
       </div>
 
       {/* Navigation */}
-      <div className="mb-3 px-3">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A0A5AC]">
-          Menu
-        </p>
-      </div>
-
       <nav className="flex-1 space-y-1">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              [
-                "group flex h-11 items-center gap-3 rounded-xl px-4",
-                "text-[13px] font-medium transition-all duration-200",
+              `flex h-10 items-center gap-3 rounded-xl px-3.5 text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-[#EAF1FF] text-[#0B57D0] dark:bg-[#0B57D0]/20 dark:text-blue-400"
-                  : "text-[#737981] hover:bg-[#F5F6F8] hover:text-[#20242A] dark:text-[#9AA0A8] dark:hover:bg-[#1B222C] dark:hover:text-white",
-              ].join(" ")
+                  ? "bg-blue-50 text-blue-600 dark:bg-blue-600/10 dark:text-blue-400 font-semibold"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200"
+              }`
             }
           >
-            <span className="flex w-5 items-center justify-center text-[16px]">
-              {item.icon}
-            </span>
-
+            {getIcon(item.label)}
             <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>
 
-      {/* Bottom section */}
-      <div className="mt-auto space-y-5">
-        {/* Theme */}
-        <div>
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-[#A0A5AC]">
-            Appearance
-          </p>
+      {/* Theme Switcher & Logout */}
+      <div className="mt-auto space-y-4">
+        <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800/60">
+          <button
+            type="button"
+            onClick={() => toggleTheme("light")}
+            className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition ${
+              theme === "light"
+                ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+            }`}
+          >
+            <Sun className="w-3.5 h-3.5" />
+            <span>Light</span>
+          </button>
 
-          <div className="flex rounded-xl bg-[#F3F4F6] p-1 dark:bg-[#1B222C]">
-            <button
-              type="button"
-              onClick={() => toggleTheme("light")}
-              className={`flex h-9 flex-1 items-center justify-center gap-1 rounded-lg text-[11px] font-semibold transition ${
-                theme === "light"
-                  ? "bg-white text-[#0B57D0] shadow-sm dark:bg-[#252D38]"
-                  : "text-[#8B9199]"
-              }`}
-            >
-              ☀️ Light
-            </button>
-
-            <button
-              type="button"
-              onClick={() => toggleTheme("dark")}
-              className={`flex h-9 flex-1 items-center justify-center gap-1 rounded-lg text-[11px] font-semibold transition ${
-                theme === "dark"
-                  ? "bg-[#0B57D0] text-white shadow-sm"
-                  : "text-[#8B9199]"
-              }`}
-            >
-              🌙 Dark
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => toggleTheme("dark")}
+            className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition ${
+              theme === "dark"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
+            }`}
+          >
+            <Moon className="w-3.5 h-3.5" />
+            <span>Dark</span>
+          </button>
         </div>
 
-        {/* Logout */}
         <button
           type="button"
           onClick={onLogout}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[12px] font-semibold text-[#E34D59] transition hover:bg-[#FFF1F2]"
+          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
         >
-          <span>↪</span>
-          Sign Out
+          <LogOut className="w-4 h-4" />
+          <span>Sign Out</span>
         </button>
       </div>
     </aside>
