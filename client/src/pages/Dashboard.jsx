@@ -31,10 +31,6 @@ const Dashboard = () => {
 
   const [loading, setLoading] = useState(true);
 
-  // --------------------------------------------------
-  // FETCH DATA FROM YOUR EXISTING BACKEND
-  // --------------------------------------------------
-
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
@@ -45,8 +41,6 @@ const Dashboard = () => {
 
         setMembers(membersResponse.data.members || []);
 
-        // Attendance is available only for admin and supervisor
-        // according to your backend routes.
         try {
           const attendanceResponse = await api.get("/attendance");
 
@@ -69,10 +63,6 @@ const Dashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // --------------------------------------------------
-  // BACKEND DATA
-  // --------------------------------------------------
-
   const totalMembers = members.length;
 
   const totalDivisions = useMemo(() => {
@@ -92,10 +82,6 @@ const Dashboard = () => {
 
     return Math.round((present / attendance.length) * 100);
   }, [attendance]);
-
-  // --------------------------------------------------
-  // MONTHLY ATTENDANCE CHART
-  // --------------------------------------------------
 
   const chartData = useMemo(() => {
     const months = [
@@ -131,8 +117,6 @@ const Dashboard = () => {
           ? Math.round((present / currentMonthRecords.length) * 100)
           : 0;
 
-      // Previous year is UI-only because the backend does not provide
-      // a separate previous-year attendance endpoint.
       const previousYearValue = [
         30, 38, 42, 40, 48, 52, 50, 55, 48, 58, 62, 65,
       ][index];
@@ -144,10 +128,6 @@ const Dashboard = () => {
       };
     });
   }, [attendance]);
-
-  // --------------------------------------------------
-  // CALENDAR
-  // --------------------------------------------------
 
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
@@ -172,7 +152,6 @@ const Dashboard = () => {
     });
   }
 
-  // Current month's dates
   for (let day = 1; day <= daysInMonth; day++) {
     calendarCells.push({
       day,
@@ -180,7 +159,6 @@ const Dashboard = () => {
     });
   }
 
-  // Next month's dates
   let nextDay = 1;
 
   while (calendarCells.length < 42) {
@@ -209,10 +187,6 @@ const Dashboard = () => {
   const nextMonth = () => {
     setCalendarDate(new Date(year, month + 1, 1));
   };
-
-  // --------------------------------------------------
-  // STATIC SESSION UI
-  // --------------------------------------------------
 
   const sessions = [
     {
@@ -260,26 +234,10 @@ const Dashboard = () => {
   return (
     <div className="min-h-full bg-[#f8f9fb] dark:bg-[#0b0f14]">
       <div className="space-y-5">
-        {/* ==================================================
-            HEADER
-        ================================================== */}
-
         <Header subtitle="Good Morning" />
 
-        {/* ==================================================
-            MAIN GRID
-        ================================================== */}
-
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_300px]">
-          {/* ==================================================
-              LEFT COLUMN
-          ================================================== */}
-
           <div className="space-y-5">
-            {/* ==================================================
-                UPCOMING EVENT
-            ================================================== */}
-
             <div className="relative min-h-[175px] overflow-hidden rounded-xl bg-[#5795ee] px-6 py-5 text-white">
               <div className="relative z-10 max-w-[330px]">
                 <div className="mb-3">
@@ -304,7 +262,6 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              {/* Decorative illustration-like UI */}
               <div className="absolute right-8 top-1/2 hidden -translate-y-1/2 sm:block">
                 <div className="relative h-[105px] w-[125px]">
                   <div className="absolute right-0 top-4 h-[65px] w-[92px] rounded-lg border border-white/50 bg-white/20 shadow-lg backdrop-blur-sm">
@@ -326,13 +283,7 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* ==================================================
-                STAT CARDS
-            ================================================== */}
-
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {/* Total Members */}
-
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
                 <div className="flex items-center justify-between">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
@@ -353,8 +304,6 @@ const Dashboard = () => {
 
                 <p className="mt-2 text-[9px] text-slate-400">Updated today</p>
               </div>
-
-              {/* Total Divisions */}
 
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
                 <div className="flex items-center justify-between">
@@ -381,8 +330,6 @@ const Dashboard = () => {
                 </p>
               </div>
 
-              {/* Attendance Rate */}
-
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
                 <div className="flex items-center justify-between">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
@@ -406,8 +353,6 @@ const Dashboard = () => {
                   Based on attendance records
                 </p>
               </div>
-
-              {/* Upcoming Sessions */}
 
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
                 <div className="flex items-center justify-between">
@@ -435,10 +380,6 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-
-            {/* ==================================================
-                ATTENDANCE OVERVIEW
-            ================================================== */}
 
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
               <div className="mb-5 flex items-center justify-between">
@@ -525,7 +466,6 @@ const Dashboard = () => {
                       }}
                     />
 
-                    {/* This year */}
                     <Area
                       type="monotone"
                       dataKey="Attendance"
@@ -535,7 +475,6 @@ const Dashboard = () => {
                       fillOpacity={1}
                     />
 
-                    {/* Previous year - UI only */}
                     <Area
                       type="monotone"
                       dataKey="Previous"
@@ -550,13 +489,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* ==================================================
-              RIGHT COLUMN - SESSION
-          ================================================== */}
-
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
-            {/* Session Header */}
-
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-[13px] font-bold text-slate-900 dark:text-white">
                 Session
@@ -566,10 +499,6 @@ const Dashboard = () => {
                 <CalendarDays className="h-4 w-4 text-blue-600" />
               </div>
             </div>
-
-            {/* ==================================================
-                CALENDAR
-            ================================================== */}
 
             <div>
               <div className="mb-4 flex items-center justify-between">
@@ -594,8 +523,6 @@ const Dashboard = () => {
                 </button>
               </div>
 
-              {/* Week days */}
-
               <div className="mb-2 grid grid-cols-7 text-center">
                 {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
                   <span
@@ -606,8 +533,6 @@ const Dashboard = () => {
                   </span>
                 ))}
               </div>
-
-              {/* Dates */}
 
               <div className="grid grid-cols-7 gap-y-1">
                 {calendarCells.map((item, index) => (
@@ -633,13 +558,7 @@ const Dashboard = () => {
 
             <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
 
-            {/* ==================================================
-                SESSION LIST
-            ================================================== */}
-
             <div className="space-y-5">
-              {/* Wednesday */}
-
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
@@ -658,8 +577,6 @@ const Dashboard = () => {
                   ))}
                 </div>
               </div>
-
-              {/* Thursday */}
 
               <div>
                 <div className="mb-3 flex items-center justify-between">
@@ -681,8 +598,6 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* UI-only Add Session button */}
-
             <button
               type="button"
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2.5 text-[10px] font-semibold text-slate-500 transition hover:border-blue-400 hover:text-blue-600 dark:border-slate-700"
@@ -697,10 +612,6 @@ const Dashboard = () => {
   );
 };
 
-// ======================================================
-// SESSION ITEM COMPONENT
-// ======================================================
-
 const SessionItem = ({ session }) => {
   return (
     <div className="flex gap-3">
@@ -711,8 +622,6 @@ const SessionItem = ({ session }) => {
           {session.time}
         </span>
       </div>
-
-      {/* Session */}
 
       <div className="min-w-0 flex-1 rounded-lg border border-slate-100 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/30">
         <div className="flex items-start justify-between gap-2">

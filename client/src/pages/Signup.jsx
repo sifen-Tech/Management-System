@@ -31,10 +31,8 @@ const Signup = () => {
         year,
       });
 
-      // Registration successful
       navigate("/login");
     } catch (err) {
-      // Backend validation errors
       const backendErrors = err.response?.data?.errors;
 
       if (backendErrors) {
@@ -53,7 +51,6 @@ const Signup = () => {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[#F8FAFC] p-4 dark:bg-slate-950">
-      {/* Signup Card */}
       <div className="w-full max-w-[440px] rounded-3xl bg-white p-10 shadow-sm dark:border dark:border-slate-800 dark:bg-[#11161D]">
         {/* Brand Logo */}
         <div className="mb-6 flex items-center justify-center gap-2">
@@ -66,7 +63,6 @@ const Signup = () => {
           </span>
         </div>
 
-        {/* Heading */}
         <div className="mb-6 text-left">
           <h1 className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 dark:text-white">
             Create Account
@@ -76,16 +72,13 @@ const Signup = () => {
           <p className="mt-1 text-xs text-slate-400">Sign up to get started</p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-4 rounded-xl bg-rose-50 p-3 text-left text-xs text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
             {error}
           </div>
         )}
 
-        {/* Signup Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Full Name */}
           <div className="relative">
             <label
               htmlFor="fullName"
@@ -105,7 +98,6 @@ const Signup = () => {
             />
           </div>
 
-          {/* Email Address */}
           <div className="relative">
             <label
               htmlFor="email"
@@ -125,7 +117,6 @@ const Signup = () => {
             />
           </div>
 
-          {/* Password */}
           <div className="relative">
             <label
               htmlFor="password"
@@ -157,7 +148,6 @@ const Signup = () => {
             </button>
           </div>
 
-          {/* Division */}
           <div className="relative">
             <label
               htmlFor="division"
@@ -177,7 +167,6 @@ const Signup = () => {
             />
           </div>
 
-          {/* Year */}
           <div className="relative">
             <label
               htmlFor="year"
@@ -197,7 +186,6 @@ const Signup = () => {
             />
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
@@ -207,7 +195,6 @@ const Signup = () => {
           </button>
         </form>
 
-        {/* Login Redirect */}
         <p className="mt-6 text-left text-xs text-slate-500 dark:text-slate-400">
           Already have an account?{" "}
           <button

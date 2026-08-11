@@ -9,9 +9,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-// ======================================================
-// Helper: Get today's date in YYYY-MM-DD format
-// ======================================================
 const getToday = () => {
   const date = new Date();
 
@@ -22,9 +19,6 @@ const getToday = () => {
   return `${year}-${month}-${day}`;
 };
 
-// ======================================================
-// Helper: Convert year into 1st / 2nd / 3rd / 4th...
-// ======================================================
 const formatYear = (year) => {
   if (year === undefined || year === null || year === "") {
     return "-";
@@ -43,30 +37,15 @@ const formatYear = (year) => {
   return `${number}th`;
 };
 
-// ======================================================
-// Helper: Get member ID safely
-// ======================================================
 const getMemberId = (member) => {
   return member?._id || member?.id;
 };
 
-// ======================================================
-// Avatar fallback
-// Backend does not have avatar field.
-// We use a frontend-only avatar.
-// ======================================================
 const getAvatar = (index) => {
   return `https://i.pravatar.cc/150?img=${(index % 20) + 1}`;
 };
 
-// ======================================================
-// Attendance Page
-// ======================================================
 const Attendance = () => {
-  // ====================================================
-  // State
-  // ====================================================
-
   const [currentUser, setCurrentUser] = useState(null);
 
   const [members, setMembers] = useState([]);
@@ -91,15 +70,7 @@ const Attendance = () => {
 
   const [success, setSuccess] = useState("");
 
-  // ====================================================
-  // Today's date
-  // ====================================================
-
   const today = getToday();
-
-  // ====================================================
-  // Load current user
-  // ====================================================
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -113,10 +84,6 @@ const Attendance = () => {
     }
   }, []);
 
-  // ====================================================
-  // Fetch members + today's attendance
-  // ====================================================
-
   useEffect(() => {
     fetchAttendanceData();
   }, []);
@@ -126,27 +93,15 @@ const Attendance = () => {
       setLoading(true);
       setError("");
 
-      // -----------------------------------------------
-      // Get all members
-      // -----------------------------------------------
-
       const membersResponse = await api.get("/members");
 
       const membersData = membersResponse.data?.members || [];
 
       setMembers(membersData);
 
-      // -----------------------------------------------
-      // Get attendance records
-      // -----------------------------------------------
-
       const attendanceResponse = await api.get("/attendance");
 
       const attendanceData = attendanceResponse.data?.attendance || [];
-
-      // -----------------------------------------------
-      // Only use today's attendance
-      // -----------------------------------------------
 
       const todayAttendance = {};
 
@@ -191,19 +146,11 @@ const Attendance = () => {
     }
   };
 
-  // ====================================================
-  // Get divisions
-  // ====================================================
-
   const divisions = useMemo(() => {
     const values = members.map((member) => member.division).filter(Boolean);
 
     return ["All", ...new Set(values)];
   }, [members]);
-
-  // ====================================================
-  // Search + division filter
-  // ====================================================
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
@@ -223,10 +170,6 @@ const Attendance = () => {
     });
   }, [members, search, divisionFilter]);
 
-  // ====================================================
-  // Pagination
-  // ====================================================
-
   const totalPages = Math.max(
     1,
     Math.ceil(filteredMembers.length / itemsPerPage),
@@ -240,18 +183,10 @@ const Attendance = () => {
 
   const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
 
-  // ====================================================
-  // Change items per page
-  // ====================================================
-
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1);
   };
-
-  // ====================================================
-  // Change page
-  // ====================================================
 
   const goToPage = (page) => {
     if (page < 1 || page > totalPages) {
@@ -260,10 +195,6 @@ const Attendance = () => {
 
     setCurrentPage(page);
   };
-
-  // ====================================================
-  // Select Present / Absent
-  // ====================================================
 
   const handleAttendanceChange = (memberId, status) => {
     setAttendance((previous) => ({
@@ -277,13 +208,6 @@ const Attendance = () => {
     setSuccess("");
     setError("");
   };
-
-  // ====================================================
-  // Save attendance
-  //
-  // Existing record -> PUT
-  // New record      -> POST
-  // ====================================================
 
   const handleSave = async () => {
     try {
@@ -302,25 +226,13 @@ const Attendance = () => {
         return;
       }
 
-      // ------------------------------------------------
-      // Save every changed attendance record
-      // ------------------------------------------------
-
       const requests = recordsToSave.map(async ([memberId, record]) => {
-        // ----------------------------------------------
-        // Existing attendance -> update
-        // ----------------------------------------------
-
         if (record.id) {
           return api.put(`/attendance/${record.id}`, {
             status: record.status,
             date: today,
           });
         }
-
-        // ----------------------------------------------
-        // New attendance -> create
-        // ----------------------------------------------
 
         return api.post("/attendance", {
           member: memberId,
@@ -332,10 +244,6 @@ const Attendance = () => {
       await Promise.all(requests);
 
       setSuccess("Attendance saved successfully.");
-
-      // ------------------------------------------------
-      // Reload from backend
-      // ------------------------------------------------
 
       await fetchAttendanceData();
     } catch (err) {
@@ -350,22 +258,11 @@ const Attendance = () => {
     }
   };
 
-  // ====================================================
-  // Heads Up button
-  //
-  // Backend doesn't support "excused".
-  // Therefore this is currently UI-only.
-  // ====================================================
-
   const handleHeadsUp = (member) => {
     alert(
       `Heads Up selected for ${member.fullName}. Your backend currently supports only Present and Absent attendance statuses.`,
     );
   };
-
-  // ====================================================
-  // User information
-  // ====================================================
 
   const userName =
     currentUser?.fullName ||
@@ -383,26 +280,14 @@ const Attendance = () => {
     .toUpperCase()
     .slice(0, 2);
 
-  // ====================================================
-  // Page numbers
-  // ====================================================
-
   const pageNumbers = [];
 
   for (let i = 1; i <= totalPages; i++) {
     pageNumbers.push(i);
   }
 
-  // ====================================================
-  // Render
-  // ====================================================
-
   return (
     <div className="space-y-5">
-      {/* ==================================================
-          HEADER
-      ================================================== */}
-
       <div className="flex items-center justify-between">
         {/* Page title */}
         <div>
@@ -419,9 +304,7 @@ const Attendance = () => {
           </p>
         </div>
 
-        {/* Header right */}
         <div className="flex items-center gap-3">
-          {/* Search */}
           <div className="relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -437,7 +320,6 @@ const Attendance = () => {
             />
           </div>
 
-          {/* Notification */}
           <button
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-[#11161D] dark:text-slate-300"
@@ -466,15 +348,7 @@ const Attendance = () => {
         </div>
       </div>
 
-      {/* ==================================================
-          MAIN ATTENDANCE CARD
-      ================================================== */}
-
       <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm transition-colors duration-200 dark:border-slate-800 dark:bg-[#11161D]">
-        {/* ==================================================
-            ACTION BAR
-        ================================================== */}
-
         <div className="mb-4 flex items-center justify-between gap-3">
           {/* Search */}
           <div className="relative w-48">
@@ -492,7 +366,6 @@ const Attendance = () => {
             />
           </div>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
             {/* Save */}
             <button
@@ -504,7 +377,6 @@ const Attendance = () => {
               {saving ? "Saving..." : "Save"}
             </button>
 
-            {/* Filter */}
             <div className="relative">
               <button
                 type="button"
@@ -515,7 +387,6 @@ const Attendance = () => {
                 Filter
               </button>
 
-              {/* Filter dropdown */}
               {showFilter && (
                 <div className="absolute right-0 top-11 z-20 w-44 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-[#11161D]">
                   <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
@@ -546,29 +417,17 @@ const Attendance = () => {
           </div>
         </div>
 
-        {/* ==================================================
-            SUCCESS MESSAGE
-        ================================================== */}
-
         {success && (
           <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-medium text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
             {success}
           </div>
         )}
 
-        {/* ==================================================
-            ERROR MESSAGE
-        ================================================== */}
-
         {error && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
             {error}
           </div>
         )}
-
-        {/* ==================================================
-            TABLE
-        ================================================== */}
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[650px] border-collapse text-left">
@@ -589,9 +448,7 @@ const Attendance = () => {
               </tr>
             </thead>
 
-            {/* Table body */}
             <tbody>
-              {/* Loading */}
               {loading && (
                 <tr>
                   <td
@@ -603,7 +460,6 @@ const Attendance = () => {
                 </tr>
               )}
 
-              {/* No members */}
               {!loading && paginatedMembers.length === 0 && (
                 <tr>
                   <td
@@ -615,7 +471,6 @@ const Attendance = () => {
                 </tr>
               )}
 
-              {/* Members */}
               {!loading &&
                 paginatedMembers.map((member, index) => {
                   const memberId = getMemberId(member);
@@ -627,10 +482,6 @@ const Attendance = () => {
                       key={memberId}
                       className="border-b border-slate-100 transition hover:bg-slate-50/60 dark:border-slate-800/60 dark:hover:bg-slate-800/30"
                     >
-                      {/* ==================================
-                          MEMBER
-                      =================================== */}
-
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2.5">
                           <img
@@ -653,10 +504,6 @@ const Attendance = () => {
                         </div>
                       </td>
 
-                      {/* ==================================
-                          ATTENDANCE
-                      =================================== */}
-
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5">
                           {/* Present */}
@@ -674,7 +521,6 @@ const Attendance = () => {
                             Present
                           </button>
 
-                          {/* Absent */}
                           <button
                             type="button"
                             onClick={() =>
@@ -691,10 +537,6 @@ const Attendance = () => {
                         </div>
                       </td>
 
-                      {/* ==================================
-                          HEADS UP
-                      =================================== */}
-
                       <td className="px-3 py-2">
                         <button
                           type="button"
@@ -710,10 +552,6 @@ const Attendance = () => {
             </tbody>
           </table>
         </div>
-
-        {/* ==================================================
-            FOOTER / PAGINATION
-        ================================================== */}
 
         <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
           {/* Showing */}
@@ -737,9 +575,7 @@ const Attendance = () => {
             </span>
           </div>
 
-          {/* Pagination */}
           <div className="flex items-center gap-1">
-            {/* Previous */}
             <button
               type="button"
               onClick={() => goToPage(safeCurrentPage - 1)}
@@ -749,7 +585,6 @@ const Attendance = () => {
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
 
-            {/* Pages */}
             {pageNumbers.map((page) => (
               <button
                 key={page}
@@ -765,7 +600,6 @@ const Attendance = () => {
               </button>
             ))}
 
-            {/* Next */}
             <button
               type="button"
               onClick={() => goToPage(safeCurrentPage + 1)}

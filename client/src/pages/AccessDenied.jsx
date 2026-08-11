@@ -8,7 +8,6 @@ const AccessDenied = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Fetch logged-in user profile from backend/localStorage
     const fetchCurrentUser = async () => {
       try {
         const storedUser = localStorage.getItem("user");
@@ -28,7 +27,6 @@ const AccessDenied = () => {
     fetchCurrentUser();
   }, []);
 
-  // Extract user details
   const userName = currentUser?.name || currentUser?.username || "Admin User";
   const userRole = currentUser?.role || "GUEST";
   const userInitials = userName
@@ -40,7 +38,6 @@ const AccessDenied = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header Row with Page Title & Backend User Badge */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -51,7 +48,6 @@ const AccessDenied = () => {
           </p>
         </div>
 
-        {/* Dynamic User Badge */}
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-3 py-1.5 shadow-xs dark:border-slate-800 dark:bg-[#11161D]">
           {currentUser?.avatar ? (
             <img
@@ -75,14 +71,11 @@ const AccessDenied = () => {
         </div>
       </div>
 
-      {/* Main Restricted Access Card */}
       <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-xs transition-colors duration-200 dark:border-slate-800 dark:bg-[#11161D]">
-        {/* Warning Icon Container */}
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
           <ShieldAlert className="h-8 w-8" />
         </div>
 
-        {/* Message */}
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">
           Access Denied
         </h2>
@@ -91,7 +84,6 @@ const AccessDenied = () => {
           system administrator if you believe this is a mistake.
         </p>
 
-        {/* Action Controls */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"

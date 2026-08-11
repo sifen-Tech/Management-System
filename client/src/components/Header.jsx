@@ -26,7 +26,6 @@ const Header = ({
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Search */}
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -36,12 +35,10 @@ const Header = ({
           />
         </div>
 
-        {/* Notifications */}
         <button className="p-2 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
           <Bell className="w-4 h-4" />
         </button>
 
-        {/* User Pill */}
         <div className="flex items-center gap-2.5 bg-white dark:bg-[#11161D] border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl">
           <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
             {getInitials(user?.fullName)}

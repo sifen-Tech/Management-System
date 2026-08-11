@@ -47,12 +47,10 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/access-denied" element={<AccessDenied />} />
 
-      {/* Protected Routes Wrapped in DashboardLayout */}
       <Route element={<ProtectedRoute />}>
         <Route
           element={
@@ -75,7 +73,6 @@ const AppRoutes = () => {
         </Route>
       </Route>
 
-      {/* Default Catch-all Redirects */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

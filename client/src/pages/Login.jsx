@@ -54,7 +54,6 @@ const Login = () => {
           </span>
         </div>
 
-        {/* Welcome Section */}
         <div className="mb-6 text-left">
           <h1 className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 dark:text-white">
             Welcome <span className="text-xl">👋</span>
@@ -62,16 +61,13 @@ const Login = () => {
           <p className="mt-1 text-xs text-slate-400">Please login here</p>
         </div>
 
-        {/* Error Notification */}
         {error && (
           <div className="mb-4 rounded-xl bg-rose-50 p-3 text-left text-xs text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
             {error}
           </div>
         )}
 
-        {/* Form Controls */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email Box with Inset Border Label */}
           <div className="relative">
             <label
               htmlFor="email"
@@ -90,7 +86,6 @@ const Login = () => {
             />
           </div>
 
-          {/* Password Box with Inset Border Label & Visibility Toggle Icon */}
           <div className="relative">
             <label
               htmlFor="password"
@@ -120,7 +115,6 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Remember Me Checkbox */}
           <div className="flex items-center gap-2 pt-0.5">
             <input
               id="remember"
@@ -137,7 +131,6 @@ const Login = () => {
             </label>
           </div>
 
-          {/* Login Submit Button */}
           <button
             type="submit"
             disabled={loading}
@@ -147,7 +140,6 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Sign Up Redirect Link */}
         <p className="mt-6 text-left text-xs text-slate-500 dark:text-slate-400">
           Don't have an account?{" "}
           <button

@@ -2,21 +2,12 @@ import { useEffect, useState } from "react";
 import { ChevronDown, Search, Bell, Sun, Moon } from "lucide-react";
 
 const Settings = () => {
-  // =========================
-  // Current logged-in user
-  // =========================
   const [currentUser, setCurrentUser] = useState(null);
 
-  // =========================
-  // Theme
-  // =========================
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem("theme") || "light";
   });
 
-  // =========================
-  // Settings preferences
-  // =========================
   const [autoAddEvents, setAutoAddEvents] = useState(() => {
     const saved = localStorage.getItem("autoAddEvents");
 
@@ -29,9 +20,6 @@ const Settings = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  // =========================
-  // Load logged-in user
-  // =========================
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
 
@@ -45,9 +33,6 @@ const Settings = () => {
     }
   }, []);
 
-  // =========================
-  // Apply theme
-  // =========================
   useEffect(() => {
     const root = document.documentElement;
 
@@ -60,32 +45,18 @@ const Settings = () => {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // =========================
-  // Save Auto Add Events
-  // =========================
   useEffect(() => {
     localStorage.setItem("autoAddEvents", JSON.stringify(autoAddEvents));
   }, [autoAddEvents]);
 
-  // =========================
-  // Save Phone Visibility
-  // =========================
   useEffect(() => {
     localStorage.setItem("makePhonePublic", JSON.stringify(makePhonePublic));
   }, [makePhonePublic]);
 
-  // =========================
-  // Change theme
-  // =========================
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
   };
 
-  // =========================
-  // User information
-  // =========================
-
-  // Your backend uses fullName, not name
   const userName =
     currentUser?.fullName ||
     currentUser?.name ||
@@ -104,11 +75,7 @@ const Settings = () => {
 
   return (
     <div className="space-y-6">
-      {/* =========================================
-          HEADER
-      ========================================== */}
       <div className="flex items-center justify-between">
-        {/* Page title */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
             Settings
@@ -119,7 +86,6 @@ const Settings = () => {
           </p>
         </div>
 
-        {/* Header right side */}
         <div className="flex items-center gap-3">
           {/* Search */}
           <div className="relative hidden sm:block">
@@ -132,7 +98,6 @@ const Settings = () => {
             />
           </div>
 
-          {/* Notification */}
           <button
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-[#11161D] dark:text-slate-300 dark:hover:bg-slate-800"
@@ -140,7 +105,6 @@ const Settings = () => {
             <Bell className="h-4 w-4" />
           </button>
 
-          {/* User */}
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 dark:border-slate-700 dark:bg-[#11161D]">
             {currentUser?.avatar ? (
               <img
@@ -169,13 +133,7 @@ const Settings = () => {
         </div>
       </div>
 
-      {/* =========================================
-          SETTINGS CARD
-      ========================================== */}
       <div className="min-h-[370px] rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition-colors duration-200 dark:border-slate-800 dark:bg-[#11161D]">
-        {/* =====================================
-            APPEARANCE
-        ====================================== */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-6 dark:border-slate-800/80">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -187,7 +145,6 @@ const Settings = () => {
             </p>
           </div>
 
-          {/* Appearance dropdown */}
           <div className="relative">
             <select
               value={theme}
@@ -202,9 +159,6 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* =====================================
-            AUTO ADD EVENTS
-        ====================================== */}
         <div className="flex items-center justify-between border-b border-slate-100 py-6 dark:border-slate-800/80">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -217,7 +171,6 @@ const Settings = () => {
             </p>
           </div>
 
-          {/* Toggle */}
           <button
             type="button"
             role="switch"
@@ -238,9 +191,6 @@ const Settings = () => {
           </button>
         </div>
 
-        {/* =====================================
-            PHONE PUBLIC
-        ====================================== */}
         <div className="flex items-center justify-between py-6">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -252,7 +202,6 @@ const Settings = () => {
             </p>
           </div>
 
-          {/* Toggle */}
           <button
             type="button"
             role="switch"

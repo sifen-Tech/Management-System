@@ -11,12 +11,6 @@ import {
   X,
 } from "lucide-react";
 
-// ---------------------------------------------------------
-// UI-ONLY DATA
-// These fields do not exist in your backend Member model.
-// They are only used to make the page match your Figma.
-// ---------------------------------------------------------
-
 const getUiMemberData = (index) => {
   const attendanceStatuses = [
     "Active",
@@ -53,10 +47,6 @@ const getUiMemberData = (index) => {
   };
 };
 
-// ---------------------------------------------------------
-// YEAR FORMATTER
-// ---------------------------------------------------------
-
 const formatYear = (year) => {
   if (year === undefined || year === null || year === "") {
     return "-";
@@ -75,34 +65,23 @@ const formatYear = (year) => {
   return `${number}th`;
 };
 
-// ---------------------------------------------------------
-// MEMBERS COMPONENT
-// ---------------------------------------------------------
-
 const Members = () => {
-  // Backend members
   const [members, setMembers] = useState([]);
 
-  // Current logged-in user
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Search/filter
   const [search, setSearch] = useState("");
   const [divisionFilter, setDivisionFilter] = useState("All");
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
 
-  // Loading/error
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Modal
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
 
-  // Form
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -113,10 +92,6 @@ const Members = () => {
 
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
-
-  // -------------------------------------------------------
-  // GET CURRENT USER FROM LOCAL STORAGE
-  // -------------------------------------------------------
 
   useEffect(() => {
     try {
@@ -129,11 +104,6 @@ const Members = () => {
       console.error("Could not read logged-in user:", err);
     }
   }, []);
-
-  // -------------------------------------------------------
-  // FETCH MEMBERS FROM BACKEND
-  // GET /members
-  // -------------------------------------------------------
 
   const fetchMembers = async () => {
     try {
@@ -161,10 +131,6 @@ const Members = () => {
     fetchMembers();
   }, []);
 
-  // -------------------------------------------------------
-  // SEARCH + DIVISION FILTER
-  // -------------------------------------------------------
-
   const filteredMembers = useMemo(() => {
     const searchValue = search.trim().toLowerCase();
 
@@ -188,10 +154,6 @@ const Members = () => {
     });
   }, [members, search, divisionFilter]);
 
-  // -------------------------------------------------------
-  // DIVISIONS FOR FILTER
-  // -------------------------------------------------------
-
   const divisions = useMemo(() => {
     const uniqueDivisions = [
       ...new Set(
@@ -204,10 +166,6 @@ const Members = () => {
 
     return uniqueDivisions;
   }, [members]);
-
-  // -------------------------------------------------------
-  // PAGINATION
-  // -------------------------------------------------------
 
   const totalPages = Math.max(
     1,
@@ -227,10 +185,6 @@ const Members = () => {
     setCurrentPage(1);
   }, [search, divisionFilter, recordsPerPage]);
 
-  // -------------------------------------------------------
-  // OPEN ADD MEMBER MODAL
-  // -------------------------------------------------------
-
   const handleAddMember = () => {
     setEditingMember(null);
 
@@ -245,10 +199,6 @@ const Members = () => {
     setFormError("");
     setShowModal(true);
   };
-
-  // -------------------------------------------------------
-  // OPEN EDIT MEMBER MODAL
-  // -------------------------------------------------------
 
   const handleEditMember = (member) => {
     setEditingMember(member);
@@ -265,10 +215,6 @@ const Members = () => {
     setShowModal(true);
   };
 
-  // -------------------------------------------------------
-  // FORM CHANGE
-  // -------------------------------------------------------
-
   const handleFormChange = (event) => {
     const { name, value } = event.target;
 
@@ -277,12 +223,6 @@ const Members = () => {
       [name]: value,
     }));
   };
-
-  // -------------------------------------------------------
-  // CREATE / UPDATE MEMBER
-  // POST /members
-  // PUT /members/:id
-  // -------------------------------------------------------
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -344,11 +284,6 @@ const Members = () => {
     }
   };
 
-  // -------------------------------------------------------
-  // DELETE MEMBER
-  // DELETE /members/:id
-  // -------------------------------------------------------
-
   const handleDeleteMember = async (member) => {
     const confirmed = window.confirm(
       `Are you sure you want to delete ${member.fullName}?`,
@@ -368,11 +303,6 @@ const Members = () => {
       alert(err.response?.data?.message || "Unable to delete this member.");
     }
   };
-
-  // -------------------------------------------------------
-  // ATTENDANCE BADGE
-  // UI ONLY
-  // -------------------------------------------------------
 
   const getAttendanceBadge = (status) => {
     if (status === "Active") {
@@ -398,11 +328,6 @@ const Members = () => {
     );
   };
 
-  // -------------------------------------------------------
-  // CAMPUS STATUS BADGE
-  // UI ONLY
-  // -------------------------------------------------------
-
   const getStatusBadge = (status) => {
     if (status === "Off Campus") {
       return (
@@ -418,10 +343,6 @@ const Members = () => {
       </span>
     );
   };
-
-  // -------------------------------------------------------
-  // CURRENT USER DISPLAY
-  // -------------------------------------------------------
 
   const userName =
     currentUser?.fullName ||
@@ -439,16 +360,8 @@ const Members = () => {
     .toUpperCase()
     .slice(0, 2);
 
-  // -------------------------------------------------------
-  // RENDER
-  // -------------------------------------------------------
-
   return (
     <div className="space-y-5">
-      {/* ===================================================
-          HEADER
-      =================================================== */}
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -459,8 +372,6 @@ const Members = () => {
             All Members Information
           </p>
         </div>
-
-        {/* USER BADGE */}
 
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-3 py-1.5 shadow-sm dark:border-slate-800 dark:bg-[#11161D]">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">
@@ -479,18 +390,8 @@ const Members = () => {
         </div>
       </div>
 
-      {/* ===================================================
-          MAIN CARD
-      =================================================== */}
-
       <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161D]">
-        {/* =================================================
-            ACTION BAR
-        ================================================= */}
-
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          {/* SEARCH */}
-
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
@@ -502,8 +403,6 @@ const Members = () => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-10 pr-4 text-xs font-medium text-slate-700 outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-200"
             />
           </div>
-
-          {/* BUTTONS */}
 
           <div className="flex items-center gap-2">
             <button
@@ -535,19 +434,11 @@ const Members = () => {
           </div>
         </div>
 
-        {/* =================================================
-            ERROR
-        ================================================= */}
-
         {error && (
           <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-medium text-red-600 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400">
             {error}
           </div>
         )}
-
-        {/* =================================================
-            TABLE
-        ================================================= */}
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left">
@@ -583,8 +474,6 @@ const Members = () => {
                 </tr>
               )}
 
-              {/* EMPTY */}
-
               {!loading && paginatedMembers.length === 0 && (
                 <tr>
                   <td
@@ -598,8 +487,6 @@ const Members = () => {
                 </tr>
               )}
 
-              {/* MEMBERS */}
-
               {!loading &&
                 paginatedMembers.map((member, index) => {
                   const globalIndex = startIndex + index;
@@ -611,8 +498,6 @@ const Members = () => {
                       key={member._id}
                       className="transition hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
                     >
-                      {/* MEMBER NAME */}
-
                       <td className="py-3 pl-1">
                         <div className="flex items-center gap-2.5">
                           <img
@@ -633,45 +518,26 @@ const Members = () => {
                         </div>
                       </td>
 
-                      {/* MEMBER ID
-                          UI ONLY */}
-
                       <td className="py-3 font-medium text-slate-500 dark:text-slate-400">
                         {uiData.memberId}
                       </td>
-
-                      {/* DIVISION
-                          BACKEND */}
 
                       <td className="py-3 font-medium text-slate-700 dark:text-slate-300">
                         {member.division || "-"}
                       </td>
 
-                      {/* ATTENDANCE
-                          UI ONLY */}
-
                       <td className="py-3">
                         {getAttendanceBadge(uiData.attendance)}
                       </td>
-
-                      {/* YEAR
-                          BACKEND */}
 
                       <td className="py-3 font-medium text-slate-600 dark:text-slate-400">
                         {formatYear(member.year)}
                       </td>
 
-                      {/* STATUS
-                          UI ONLY */}
-
                       <td className="py-3">{getStatusBadge(uiData.status)}</td>
-
-                      {/* ACTIONS */}
 
                       <td className="py-3 pr-2">
                         <div className="flex items-center justify-end gap-1">
-                          {/* EDIT */}
-
                           <button
                             type="button"
                             onClick={() => handleEditMember(member)}
@@ -680,8 +546,6 @@ const Members = () => {
                           >
                             <Edit3 className="h-3.5 w-3.5" />
                           </button>
-
-                          {/* DELETE */}
 
                           <button
                             type="button"
@@ -700,13 +564,7 @@ const Members = () => {
           </table>
         </div>
 
-        {/* =================================================
-            FOOTER / PAGINATION
-        ================================================= */}
-
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4 text-[10px] text-slate-400 dark:border-slate-800">
-          {/* RECORDS */}
-
           <div className="flex items-center gap-2">
             <span>Showing</span>
 
@@ -729,11 +587,7 @@ const Members = () => {
             </span>
           </div>
 
-          {/* PAGE BUTTONS */}
-
           <div className="flex items-center gap-1">
-            {/* PREVIOUS */}
-
             <button
               type="button"
               disabled={safeCurrentPage === 1}
@@ -742,8 +596,6 @@ const Members = () => {
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-
-            {/* PAGE NUMBERS */}
 
             {Array.from({ length: totalPages }, (_, index) => index + 1)
               .slice(0, 5)
@@ -762,8 +614,6 @@ const Members = () => {
                 </button>
               ))}
 
-            {/* NEXT */}
-
             <button
               type="button"
               disabled={safeCurrentPage === totalPages}
@@ -778,15 +628,9 @@ const Members = () => {
         </div>
       </div>
 
-      {/* ===================================================
-          ADD / EDIT MEMBER MODAL
-      =================================================== */}
-
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-[#11161D]">
-            {/* MODAL HEADER */}
-
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-slate-900 dark:text-white">
@@ -809,19 +653,13 @@ const Members = () => {
               </button>
             </div>
 
-            {/* FORM ERROR */}
-
             {formError && (
               <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-600 dark:bg-red-950/20 dark:text-red-400">
                 {formError}
               </div>
             )}
 
-            {/* FORM */}
-
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* FULL NAME */}
-
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
                   Full Name
@@ -836,8 +674,6 @@ const Members = () => {
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                 />
               </div>
-
-              {/* EMAIL */}
 
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
@@ -854,8 +690,6 @@ const Members = () => {
                 />
               </div>
 
-              {/* PHONE */}
-
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
                   Phone
@@ -870,8 +704,6 @@ const Members = () => {
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                 />
               </div>
-
-              {/* DIVISION */}
 
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
@@ -888,8 +720,6 @@ const Members = () => {
                 />
               </div>
 
-              {/* YEAR */}
-
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
                   Year
@@ -905,8 +735,6 @@ const Members = () => {
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                 />
               </div>
-
-              {/* ACTIONS */}
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
