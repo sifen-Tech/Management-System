@@ -7,10 +7,9 @@ import {
   Settings,
   Sun,
   Moon,
-  LogOut,
 } from "lucide-react";
 
-const Sidebar = ({ menuItems = [], onLogout }) => {
+const Sidebar = ({ menuItems = [] }) => {
   const { theme, toggleTheme } = useTheme();
 
   const getIcon = (label) => {
@@ -25,9 +24,9 @@ const Sidebar = ({ menuItems = [], onLogout }) => {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[240px] flex-col border-r border-slate-200/80 bg-white px-5 py-6 dark:border-slate-800 dark:bg-[#11161D]">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[220px] flex-col border-r border-slate-200/80 bg-white px-4 py-6 dark:border-slate-800 dark:bg-[#0E131A]">
       {/* Brand Header */}
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-8 flex items-center gap-3 px-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-sm">
           L
         </div>
@@ -59,13 +58,13 @@ const Sidebar = ({ menuItems = [], onLogout }) => {
         ))}
       </nav>
 
-      {/* Theme Switcher & Logout */}
-      <div className="mt-auto space-y-4">
+      {/* Theme Switcher Only */}
+      <div className="mt-auto">
         <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800/60">
           <button
             type="button"
             onClick={() => toggleTheme("light")}
-            className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition ${
+            className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer ${
               theme === "light"
                 ? "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white"
                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
@@ -78,7 +77,7 @@ const Sidebar = ({ menuItems = [], onLogout }) => {
           <button
             type="button"
             onClick={() => toggleTheme("dark")}
-            className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition ${
+            className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[11px] font-medium transition cursor-pointer ${
               theme === "dark"
                 ? "bg-blue-600 text-white shadow-sm"
                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400"
@@ -88,15 +87,6 @@ const Sidebar = ({ menuItems = [], onLogout }) => {
             <span>Dark</span>
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={onLogout}
-          className="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
-        </button>
       </div>
     </aside>
   );

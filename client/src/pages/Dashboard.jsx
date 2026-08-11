@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import Header from "../components/Header";
+
 import {
   Users,
-  Grid,
+  Layers3,
+  CalendarDays,
   TrendingUp,
-  Calendar,
   ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
   MoreVertical,
+  Plus,
 } from "lucide-react";
+
 import {
   ResponsiveContainer,
   AreaChart,
@@ -22,248 +27,706 @@ const Dashboard = () => {
   const [members, setMembers] = useState([]);
   const [attendance, setAttendance] = useState([]);
 
+  const [calendarDate, setCalendarDate] = useState(new Date());
+
+  const [loading, setLoading] = useState(true);
+
+  // --------------------------------------------------
+  // FETCH DATA FROM YOUR EXISTING BACKEND
+  // --------------------------------------------------
+
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const [resMembers, resAttendance] = await Promise.all([
-          api.get("/members"),
-          api.get("/attendance"),
-        ]);
-        setMembers(resMembers.data.members || []);
-        setAttendance(resAttendance.data.attendance || []);
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
+        setLoading(true);
+
+        // Members is available for admin, supervisor and user.
+        const membersResponse = await api.get("/members");
+
+        setMembers(membersResponse.data.members || []);
+
+        // Attendance is available only for admin and supervisor
+        // according to your backend routes.
+        try {
+          const attendanceResponse = await api.get("/attendance");
+
+          setAttendance(attendanceResponse.data.attendance || []);
+        } catch (attendanceError) {
+          console.log(
+            "Attendance is not available for this user:",
+            attendanceError?.response?.data?.message || attendanceError.message,
+          );
+
+          setAttendance([]);
+        }
+      } catch (error) {
+        console.error("Dashboard fetch error:", error);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchData();
+
+    fetchDashboardData();
   }, []);
 
-  const totalMembers = members.length;
-  const totalDivisions =
-    new Set(members.map((m) => m.division).filter(Boolean)).size || 5;
-  const presentCount = attendance.filter((a) => a.status === "present").length;
-  const attendanceRate =
-    attendance.length > 0
-      ? Math.round((presentCount / attendance.length) * 100)
-      : 68;
+  // --------------------------------------------------
+  // BACKEND DATA
+  // --------------------------------------------------
 
-  const chartData = [
-    { name: "Jan", Attendance: 40, Previous: 24 },
-    { name: "Feb", Attendance: 55, Previous: 38 },
-    { name: "Mar", Attendance: 70, Previous: 50 },
-    { name: "Apr", Attendance: 65, Previous: 48 },
-    { name: "May", Attendance: 85, Previous: 60 },
-    { name: "Jun", Attendance: 78, Previous: 55 },
-    { name: "Jul", Attendance: attendanceRate, Previous: 65 },
+  const totalMembers = members.length;
+
+  const totalDivisions = useMemo(() => {
+    return new Set(
+      members.map((member) => member.division).filter((division) => division),
+    ).size;
+  }, [members]);
+
+  const attendanceRate = useMemo(() => {
+    if (!attendance.length) {
+      return 0;
+    }
+
+    const present = attendance.filter(
+      (item) => item.status === "present",
+    ).length;
+
+    return Math.round((present / attendance.length) * 100);
+  }, [attendance]);
+
+  // --------------------------------------------------
+  // MONTHLY ATTENDANCE CHART
+  // --------------------------------------------------
+
+  const chartData = useMemo(() => {
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    const currentYear = new Date().getFullYear();
+
+    return months.map((month, index) => {
+      const currentMonthRecords = attendance.filter((record) => {
+        const date = new Date(record.date);
+
+        return date.getFullYear() === currentYear && date.getMonth() === index;
+      });
+
+      const present = currentMonthRecords.filter(
+        (record) => record.status === "present",
+      ).length;
+
+      const currentRate =
+        currentMonthRecords.length > 0
+          ? Math.round((present / currentMonthRecords.length) * 100)
+          : 0;
+
+      // Previous year is UI-only because the backend does not provide
+      // a separate previous-year attendance endpoint.
+      const previousYearValue = [
+        30, 38, 42, 40, 48, 52, 50, 55, 48, 58, 62, 65,
+      ][index];
+
+      return {
+        name: month,
+        Attendance: currentRate,
+        Previous: previousYearValue,
+      };
+    });
+  }, [attendance]);
+
+  // --------------------------------------------------
+  // CALENDAR
+  // --------------------------------------------------
+
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+
+  const monthName = calendarDate.toLocaleString("default", {
+    month: "long",
+  });
+
+  const firstDay = new Date(year, month, 1).getDay();
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const previousMonthDays = new Date(year, month, 0).getDate();
+
+  const calendarCells = [];
+
+  // Previous month's dates
+  for (let i = firstDay - 1; i >= 0; i--) {
+    calendarCells.push({
+      day: previousMonthDays - i,
+      currentMonth: false,
+    });
+  }
+
+  // Current month's dates
+  for (let day = 1; day <= daysInMonth; day++) {
+    calendarCells.push({
+      day,
+      currentMonth: true,
+    });
+  }
+
+  // Next month's dates
+  let nextDay = 1;
+
+  while (calendarCells.length < 42) {
+    calendarCells.push({
+      day: nextDay,
+      currentMonth: false,
+    });
+
+    nextDay++;
+  }
+
+  const today = new Date();
+
+  const isToday = (day) => {
+    return (
+      day === today.getDate() &&
+      month === today.getMonth() &&
+      year === today.getFullYear()
+    );
+  };
+
+  const previousMonth = () => {
+    setCalendarDate(new Date(year, month - 1, 1));
+  };
+
+  const nextMonth = () => {
+    setCalendarDate(new Date(year, month + 1, 1));
+  };
+
+  // --------------------------------------------------
+  // STATIC SESSION UI
+  // --------------------------------------------------
+
+  const sessions = [
+    {
+      date: "Wednesday",
+      day: "12",
+      month: monthName,
+      time: "09:30",
+      division: "CPD",
+      title: "Contest in CPD Division",
+    },
+    {
+      date: "Wednesday",
+      day: "12",
+      month: monthName,
+      time: "12:00",
+      division: "Development",
+      title: "Development Weekly Sessions",
+    },
+    {
+      date: "Wednesday",
+      day: "12",
+      month: monthName,
+      time: "01:30",
+      division: "Cyber",
+      title: "Cyber Weekly Sessions",
+    },
+    {
+      date: "Thursday",
+      day: "13",
+      month: monthName,
+      time: "09:30",
+      division: "Data Science",
+      title: "Data Science Weekly Sessions",
+    },
+    {
+      date: "Thursday",
+      day: "13",
+      month: monthName,
+      time: "11:00",
+      division: "CPD",
+      title: "Content Analysis in CPD Division",
+    },
   ];
 
   return (
-    <div className="space-y-6">
-      <Header subtitle="Good Morning" />
+    <div className="min-h-full bg-[#f8f9fb] dark:bg-[#0b0f14]">
+      <div className="space-y-5">
+        {/* ==================================================
+            HEADER
+        ================================================== */}
 
-      {/* Main Grid Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Columns */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Banner */}
-          <div className="relative overflow-hidden rounded-2xl bg-blue-600 p-6 text-white shadow-sm flex justify-between items-center">
-            <div className="space-y-3 z-10 max-w-sm">
-              <span className="inline-block px-3 py-1 text-[10px] font-semibold bg-white/20 rounded-full">
-                Upcoming Event
-              </span>
-              <h2 className="text-lg font-bold leading-snug">
-                Cross-division knowledge-sharing
-              </h2>
-              <button className="px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-xl hover:bg-slate-800 transition">
-                Add to calendar
-              </button>
-            </div>
-            <div className="hidden sm:block opacity-80">
-              <Calendar className="w-28 h-28 stroke-1 text-white/40" />
-            </div>
-          </div>
+        <Header subtitle="Good Morning" />
 
-          {/* 4 Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {/* Total Members */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400">
-                <Users className="w-4 h-4" />
-                <span className="flex items-center text-[10px] text-emerald-500 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                  +12% <ArrowUpRight className="w-3 h-3 ml-0.5" />
-                </span>
-              </div>
-              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
-                {totalMembers || 162}
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">Total members</p>
-            </div>
+        {/* ==================================================
+            MAIN GRID
+        ================================================== */}
 
-            {/* Total Divisions */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400">
-                <Grid className="w-4 h-4" />
-                <span className="flex items-center text-[10px] text-emerald-500 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                  +5% <ArrowUpRight className="w-3 h-3 ml-0.5" />
-                </span>
-              </div>
-              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
-                {totalDivisions}
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">Total Divisions</p>
-            </div>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,2fr)_300px]">
+          {/* ==================================================
+              LEFT COLUMN
+          ================================================== */}
 
-            {/* Attendance Rate */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400">
-                <TrendingUp className="w-4 h-4" />
-                <span className="flex items-center text-[10px] text-red-500 font-semibold bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded">
-                  -2%
-                </span>
-              </div>
-              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
-                {attendanceRate}%
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">Attendance Rate</p>
-            </div>
+          <div className="space-y-5">
+            {/* ==================================================
+                UPCOMING EVENT
+            ================================================== */}
 
-            {/* Upcoming Sessions */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <div className="flex items-center justify-between text-slate-400">
-                <Calendar className="w-4 h-4" />
-                <span className="flex items-center text-[10px] text-emerald-500 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                  +15% <ArrowUpRight className="w-3 h-3 ml-0.5" />
-                </span>
-              </div>
-              <p className="mt-3 text-2xl font-bold text-slate-900 dark:text-white">
-                12
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Upcoming Sessions
-              </p>
-            </div>
-          </div>
+            <div className="relative min-h-[175px] overflow-hidden rounded-xl bg-[#5795ee] px-6 py-5 text-white">
+              <div className="relative z-10 max-w-[330px]">
+                <div className="mb-3">
+                  <span className="inline-flex rounded-full bg-[#ff6f85] px-3 py-1 text-[9px] font-semibold">
+                    Members
+                  </span>
+                </div>
 
-          {/* Area Chart */}
-          <div className="p-5 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Attendance Overview
-                </h3>
-              </div>
-              <div className="flex items-center gap-4 text-xs font-medium">
-                <span className="flex items-center gap-1.5 text-blue-600">
-                  <span className="w-2 h-2 rounded-full bg-blue-600" />
-                  This year
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" />
-                  Last year
-                </span>
-              </div>
-            </div>
+                <h2 className="text-[18px] font-bold leading-6">
+                  Upcoming Event
+                </h2>
 
-            <div className="h-60 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={chartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                <p className="mt-2 max-w-[250px] text-[12px] leading-5 text-white/90">
+                  Cross-division knowledge-sharing
+                </p>
+
+                <button
+                  type="button"
+                  className="mt-4 rounded-lg bg-[#073b91] px-4 py-2 text-[11px] font-semibold text-white transition hover:bg-[#062f73]"
                 >
-                  <XAxis
-                    dataKey="name"
-                    stroke="#94a3b8"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="#94a3b8"
-                    fontSize={11}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#1e293b",
-                      borderRadius: "12px",
-                      border: "none",
-                      color: "#fff",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Attendance"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    fillOpacity={0.1}
-                    fill="#2563eb"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Previous"
-                    stroke="#cbd5e1"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    fill="transparent"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+                  Add to calendar
+                </button>
+              </div>
+
+              {/* Decorative illustration-like UI */}
+              <div className="absolute right-8 top-1/2 hidden -translate-y-1/2 sm:block">
+                <div className="relative h-[105px] w-[125px]">
+                  <div className="absolute right-0 top-4 h-[65px] w-[92px] rounded-lg border border-white/50 bg-white/20 shadow-lg backdrop-blur-sm">
+                    <div className="border-b border-white/30 px-2 py-1">
+                      <div className="h-1.5 w-12 rounded bg-white/70" />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-1 p-2">
+                      {[1, 2, 3, 4, 5, 6].map((item) => (
+                        <span key={item} className="h-2 rounded bg-white/50" />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="absolute bottom-0 left-1 h-12 w-10 rounded-t-full bg-white/30" />
+
+                  <div className="absolute bottom-0 right-6 h-16 w-7 rounded-t-full bg-white/40" />
+                </div>
+              </div>
             </div>
+
+            {/* ==================================================
+                STAT CARDS
+            ================================================== */}
+
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {/* Total Members */}
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                    <Users className="h-4 w-4 text-blue-600" />
+                  </div>
+
+                  <span className="flex items-center rounded bg-emerald-50 px-1.5 py-1 text-[9px] font-semibold text-emerald-500 dark:bg-emerald-950/30">
+                    +12%
+                    <ArrowUpRight className="ml-0.5 h-3 w-3" />
+                  </span>
+                </div>
+
+                <p className="mt-3 text-[22px] font-bold text-slate-900 dark:text-white">
+                  {loading ? "—" : totalMembers}
+                </p>
+
+                <p className="mt-1 text-[10px] text-slate-400">Total Members</p>
+
+                <p className="mt-2 text-[9px] text-slate-400">Updated today</p>
+              </div>
+
+              {/* Total Divisions */}
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                    <Layers3 className="h-4 w-4 text-blue-600" />
+                  </div>
+
+                  <span className="flex items-center rounded bg-emerald-50 px-1.5 py-1 text-[9px] font-semibold text-emerald-500 dark:bg-emerald-950/30">
+                    +5%
+                    <ArrowUpRight className="ml-0.5 h-3 w-3" />
+                  </span>
+                </div>
+
+                <p className="mt-3 text-[22px] font-bold text-slate-900 dark:text-white">
+                  {loading ? "—" : totalDivisions}
+                </p>
+
+                <p className="mt-1 text-[10px] text-slate-400">
+                  Total Divisions
+                </p>
+
+                <p className="mt-2 text-[9px] text-slate-400">
+                  From member records
+                </p>
+              </div>
+
+              {/* Attendance Rate */}
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                  </div>
+
+                  <span className="rounded bg-red-50 px-1.5 py-1 text-[9px] font-semibold text-red-500 dark:bg-red-950/30">
+                    -2%
+                  </span>
+                </div>
+
+                <p className="mt-3 text-[22px] font-bold text-slate-900 dark:text-white">
+                  {loading ? "—" : `${attendanceRate}%`}
+                </p>
+
+                <p className="mt-1 text-[10px] text-slate-400">
+                  Attendance Rate
+                </p>
+
+                <p className="mt-2 text-[9px] text-slate-400">
+                  Based on attendance records
+                </p>
+              </div>
+
+              {/* Upcoming Sessions */}
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                    <CalendarDays className="h-4 w-4 text-blue-600" />
+                  </div>
+
+                  <span className="flex items-center rounded bg-emerald-50 px-1.5 py-1 text-[9px] font-semibold text-emerald-500 dark:bg-emerald-950/30">
+                    +12%
+                    <ArrowUpRight className="ml-0.5 h-3 w-3" />
+                  </span>
+                </div>
+
+                {/* UI-only because backend has no session model */}
+                <p className="mt-3 text-[22px] font-bold text-slate-900 dark:text-white">
+                  12
+                </p>
+
+                <p className="mt-1 text-[10px] text-slate-400">
+                  Upcoming Sessions
+                </p>
+
+                <p className="mt-2 text-[9px] text-slate-400">
+                  Scheduled sessions
+                </p>
+              </div>
+            </div>
+
+            {/* ==================================================
+                ATTENDANCE OVERVIEW
+            ================================================== */}
+
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h3 className="text-[13px] font-bold text-slate-900 dark:text-white">
+                    Attendance Overview
+                  </h3>
+
+                  <p className="mt-1 text-[9px] text-slate-400">
+                    Monthly attendance performance
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4 text-[9px]">
+                  <span className="flex items-center gap-1.5 text-slate-500">
+                    <span className="h-2 w-2 rounded-full bg-blue-600" />
+                    This year
+                  </span>
+
+                  <span className="flex items-center gap-1.5 text-slate-400">
+                    <span className="h-2 w-2 rounded-full bg-slate-300" />
+                    Last year
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{
+                      top: 10,
+                      right: 10,
+                      left: -25,
+                      bottom: 0,
+                    }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="attendanceGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#2563eb"
+                          stopOpacity={0.2}
+                        />
+
+                        <stop
+                          offset="100%"
+                          stopColor="#2563eb"
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                    </defs>
+
+                    <XAxis
+                      dataKey="name"
+                      stroke="#94a3b8"
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+
+                    <YAxis
+                      domain={[0, 100]}
+                      ticks={[0, 20, 40, 60, 80, 100]}
+                      stroke="#94a3b8"
+                      fontSize={9}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1e293b",
+                        borderRadius: "8px",
+                        border: "none",
+                        color: "#fff",
+                        fontSize: "10px",
+                      }}
+                    />
+
+                    {/* This year */}
+                    <Area
+                      type="monotone"
+                      dataKey="Attendance"
+                      stroke="#2563eb"
+                      strokeWidth={2}
+                      fill="url(#attendanceGradient)"
+                      fillOpacity={1}
+                    />
+
+                    {/* Previous year - UI only */}
+                    <Area
+                      type="monotone"
+                      dataKey="Previous"
+                      stroke="#cbd5e1"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      fill="transparent"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* ==================================================
+              RIGHT COLUMN - SESSION
+          ================================================== */}
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#11161d]">
+            {/* Session Header */}
+
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-[13px] font-bold text-slate-900 dark:text-white">
+                Session
+              </h3>
+
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950/30">
+                <CalendarDays className="h-4 w-4 text-blue-600" />
+              </div>
+            </div>
+
+            {/* ==================================================
+                CALENDAR
+            ================================================== */}
+
+            <div>
+              <div className="mb-4 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={previousMonth}
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-[#073b91] text-white transition hover:bg-[#052e70]"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+
+                <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                  {monthName}, {year}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={nextMonth}
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-[#073b91] text-white transition hover:bg-[#052e70]"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Week days */}
+
+              <div className="mb-2 grid grid-cols-7 text-center">
+                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                  <span
+                    key={day}
+                    className="text-[9px] font-semibold text-slate-400"
+                  >
+                    {day}
+                  </span>
+                ))}
+              </div>
+
+              {/* Dates */}
+
+              <div className="grid grid-cols-7 gap-y-1">
+                {calendarCells.map((item, index) => (
+                  <div
+                    key={`${item.day}-${index}`}
+                    className="flex h-7 items-center justify-center"
+                  >
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[9px] transition ${
+                        !item.currentMonth
+                          ? "text-slate-300 dark:text-slate-700"
+                          : isToday(item.day)
+                            ? "bg-[#073b91] font-bold text-white"
+                            : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {item.day}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="my-5 border-t border-slate-100 dark:border-slate-800" />
+
+            {/* ==================================================
+                SESSION LIST
+            ================================================== */}
+
+            <div className="space-y-5">
+              {/* Wednesday */}
+
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    Wednesday, {sessions[0].day} {monthName} {year}
+                  </p>
+
+                  <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
+                </div>
+
+                <div className="space-y-3">
+                  {sessions.slice(0, 3).map((session) => (
+                    <SessionItem
+                      key={`${session.time}-${session.title}`}
+                      session={session}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Thursday */}
+
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    Thursday, {sessions[3].day} {monthName} {year}
+                  </p>
+
+                  <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
+                </div>
+
+                <div className="space-y-3">
+                  {sessions.slice(3).map((session) => (
+                    <SessionItem
+                      key={`${session.time}-${session.title}`}
+                      session={session}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* UI-only Add Session button */}
+
+            <button
+              type="button"
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300 py-2.5 text-[10px] font-semibold text-slate-500 transition hover:border-blue-400 hover:text-blue-600 dark:border-slate-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add session
+            </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+};
 
-        {/* Right Session Column */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-[#11161D] border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-4">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              Session
-            </h3>
-            <Calendar className="w-4 h-4 text-slate-400" />
+// ======================================================
+// SESSION ITEM COMPONENT
+// ======================================================
+
+const SessionItem = ({ session }) => {
+  return (
+    <div className="flex gap-3">
+      {/* Time */}
+
+      <div className="w-[35px] shrink-0 pt-2">
+        <span className="text-[9px] font-medium text-slate-400">
+          {session.time}
+        </span>
+      </div>
+
+      {/* Session */}
+
+      <div className="min-w-0 flex-1 rounded-lg border border-slate-100 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-800/30">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[8px] font-medium text-slate-400">
+              {session.division}
+            </p>
+
+            <p className="mt-0.5 text-[9px] font-semibold leading-4 text-slate-800 dark:text-slate-200">
+              {session.title}
+            </p>
           </div>
 
-          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Wednesday, 26 July 2026
-          </p>
-
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <span className="text-[11px] font-medium text-slate-400 w-10 pt-2">
-                09:30
-              </span>
-              <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  Content in CPD Division
-                </p>
-                <MoreVertical className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <span className="text-[11px] font-medium text-slate-400 w-10 pt-2">
-                12:00
-              </span>
-              <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  Development Division Weekly Sessions
-                </p>
-                <MoreVertical className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <span className="text-[11px] font-medium text-slate-400 w-10 pt-2">
-                01:30
-              </span>
-              <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  Cyber Weekly Sessions
-                </p>
-                <MoreVertical className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
-              </div>
-            </div>
-          </div>
+          <MoreVertical className="mt-0.5 h-3 w-3 shrink-0 text-slate-400" />
         </div>
       </div>
     </div>

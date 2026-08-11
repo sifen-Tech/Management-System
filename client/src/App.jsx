@@ -25,7 +25,7 @@ const AppRoutes = () => {
       icon: "▦",
     },
     {
-      label: "Members",
+      label: "All Members",
       path: "/members",
       icon: "👥",
     },

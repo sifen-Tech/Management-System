@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -30,9 +30,9 @@ const Login = () => {
       const { user, token } = response.data;
       login(user, token);
       navigate("/dashboard");
-    } catch (error) {
+    } catch (err) {
       setError(
-        error.response?.data?.message ||
+        err.response?.data?.message ||
           "Login failed. Please check your email and password.",
       );
     } finally {
@@ -41,140 +41,123 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-slate-100 p-4">
-      {/* Main Container Card */}
-      <div className="flex w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-xl">
-        {/* Left Side - Login Form */}
-        <div className="flex w-full flex-col justify-center px-8 py-12 md:w-1/2 md:px-12">
-          {/* Logo */}
-          <div className="mb-6 flex items-center justify-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-900 text-white font-bold text-lg">
-              S
-            </div>
-            <span className="text-xl font-bold text-blue-950">Logoipsum</span>
+    <div className="flex min-h-screen w-full items-center justify-center bg-[#F8FAFC] p-4 dark:bg-slate-950">
+      {/* Centered Card */}
+      <div className="w-full max-w-[440px] rounded-3xl bg-white p-10 shadow-sm dark:border dark:border-slate-800 dark:bg-[#11161D]">
+        {/* Brand Logo Header */}
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0052CC] text-sm font-bold text-white">
+            S
           </div>
+          <span className="text-lg font-bold text-slate-900 dark:text-white">
+            Logoipsum
+          </span>
+        </div>
 
-          {/* Heading */}
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-slate-800">Welcome</h1>
-            <p className="text-xs text-slate-400 mt-1">Please login here</p>
+        {/* Welcome Section */}
+        <div className="mb-6 text-left">
+          <h1 className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 dark:text-white">
+            Welcome <span className="text-xl">👋</span>
+          </h1>
+          <p className="mt-1 text-xs text-slate-400">Please login here</p>
+        </div>
+
+        {/* Error Notification */}
+        {error && (
+          <div className="mb-4 rounded-xl bg-rose-50 p-3 text-left text-xs text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+            {error}
           </div>
+        )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 rounded-xl bg-red-50 p-3 text-center text-xs text-red-600">
-              {error}
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Field */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-slate-600 mb-1"
-              >
-                Email Address
-              </label>
-              <div className="relative">
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="robertallen@example.com"
-                  required
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-3 pr-9 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none transition-all"
-                />
-                <Mail className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
-              </div>
-            </div>
-
-            {/* Password Field */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-medium text-slate-600 mb-1"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  required
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-3 pr-9 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                id="remember"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-900 focus:ring-blue-900"
-              />
-              <label
-                htmlFor="remember"
-                className="text-xs font-medium text-slate-600 cursor-pointer"
-              >
-                Remember Me
-              </label>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-[#0b2b70] py-3 text-xs font-semibold text-white shadow-md transition-all hover:bg-[#082054] active:scale-[0.99] disabled:opacity-50"
+        {/* Form Controls */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email Box with Inset Border Label */}
+          <div className="relative">
+            <label
+              htmlFor="email"
+              className="absolute -top-2.5 left-3.5 bg-white px-1 text-[11px] font-medium text-slate-400 dark:bg-[#11161D]"
             >
-              {loading ? "Logging in..." : "Login"}
-            </button>
-          </form>
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="robertallen@example.com"
+              required
+              className="w-full rounded-2xl border border-slate-200 bg-transparent px-4 py-3 text-xs text-slate-800 placeholder-slate-300 outline-none transition-all focus:border-[#0052CC] dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-600"
+            />
+          </div>
 
-          {/* Sign Up Link */}
-          <p className="mt-6 text-center text-xs text-slate-500">
-            Don't have an account?{" "}
+          {/* Password Box with Inset Border Label & Visibility Toggle Icon */}
+          <div className="relative">
+            <label
+              htmlFor="password"
+              className="absolute -top-2.5 left-3.5 bg-white px-1 text-[11px] font-medium text-slate-400 dark:bg-[#11161D]"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••••••"
+              required
+              className="w-full rounded-2xl border border-slate-200 bg-transparent py-3 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-300 outline-none transition-all focus:border-[#0052CC] dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-600"
+            />
             <button
               type="button"
-              onClick={() => navigate("/signup")}
-              className="font-semibold text-blue-900 hover:underline"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-3.5 cursor-pointer text-slate-400 hover:text-slate-600 focus:outline-none dark:hover:text-slate-200"
             >
-              Sign up
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
-          </p>
-        </div>
+          </div>
 
-        {/* Right Side - Figma Hero Graphic */}
-        <div className="hidden w-1/2 items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 p-8 md:flex">
-          <img
-            src="/schedule-illustration.png"
-            alt="Schedule Illustration"
-            className="max-h-80 w-auto object-contain"
-            onError={(e) => {
-              // Fallback placeholder if image asset isn't added yet
-              e.target.style.display = "none";
-            }}
-          />
-        </div>
+          {/* Remember Me Checkbox */}
+          <div className="flex items-center gap-2 pt-0.5">
+            <input
+              id="remember"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-[#0052CC] focus:ring-[#0052CC]"
+            />
+            <label
+              htmlFor="remember"
+              className="cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-400"
+            >
+              Remember Me
+            </label>
+          </div>
+
+          {/* Login Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full cursor-pointer rounded-2xl bg-[#0052CC] py-3.5 text-xs font-semibold text-white transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50"
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
+
+        {/* Sign Up Redirect Link */}
+        <p className="mt-6 text-left text-xs text-slate-500 dark:text-slate-400">
+          Don't have an account?{" "}
+          <button
+            type="button"
+            onClick={() => navigate("/signup")}
+            className="cursor-pointer font-semibold text-[#0052CC] hover:underline"
+          >
+            Sign up
+          </button>
+        </p>
       </div>
     </div>
   );

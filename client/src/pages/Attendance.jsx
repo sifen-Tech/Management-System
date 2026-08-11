@@ -1,263 +1,231 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import {
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+  ChevronDown,
+} from "lucide-react";
 
+// ======================================================
+// Helper: Get today's date in YYYY-MM-DD format
+// ======================================================
+const getToday = () => {
+  const date = new Date();
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+// ======================================================
+// Helper: Convert year into 1st / 2nd / 3rd / 4th...
+// ======================================================
+const formatYear = (year) => {
+  if (year === undefined || year === null || year === "") {
+    return "-";
+  }
+
+  const number = parseInt(String(year).replace(/\D/g, ""), 10);
+
+  if (!number) {
+    return "-";
+  }
+
+  if (number === 1) return "1st";
+  if (number === 2) return "2nd";
+  if (number === 3) return "3rd";
+
+  return `${number}th`;
+};
+
+// ======================================================
+// Helper: Get member ID safely
+// ======================================================
+const getMemberId = (member) => {
+  return member?._id || member?.id;
+};
+
+// ======================================================
+// Avatar fallback
+// Backend does not have avatar field.
+// We use a frontend-only avatar.
+// ======================================================
+const getAvatar = (index) => {
+  return `https://i.pravatar.cc/150?img=${(index % 20) + 1}`;
+};
+
+// ======================================================
+// Attendance Page
+// ======================================================
 const Attendance = () => {
-  const { user } = useAuth();
+  // ====================================================
+  // State
+  // ====================================================
 
-  // =====================================================
-  // STATE
-  // =====================================================
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [members, setMembers] = useState([]);
-  const [attendance, setAttendance] = useState([]);
 
-  const [loadingMembers, setLoadingMembers] = useState(true);
-  const [loadingAttendance, setLoadingAttendance] = useState(true);
-
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [attendance, setAttendance] = useState({});
 
   const [search, setSearch] = useState("");
+
   const [divisionFilter, setDivisionFilter] = useState("All");
 
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const date = new Date();
-
-    return date.toISOString().split("T")[0];
-  });
-
-  const [savingId, setSavingId] = useState(null);
-
-  const [editingAttendanceId, setEditingAttendanceId] = useState(null);
+  const [showFilter, setShowFilter] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
+
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // =====================================================
-  // PERMISSION
-  // =====================================================
+  const [loading, setLoading] = useState(true);
 
-  const canManageAttendance =
-    user?.role === "admin" || user?.role === "supervisor";
+  const [saving, setSaving] = useState(false);
 
-  // =====================================================
-  // GET MEMBERS
-  // =====================================================
+  const [error, setError] = useState("");
 
-  const fetchMembers = async () => {
-    try {
-      setLoadingMembers(true);
+  const [success, setSuccess] = useState("");
 
-      const response = await api.get("/members");
+  // ====================================================
+  // Today's date
+  // ====================================================
 
-      setMembers(response.data.members || []);
-    } catch (error) {
-      console.error("Failed to load members:", error);
+  const today = getToday();
 
-      setError(error.response?.data?.message || "Failed to load members.");
-    } finally {
-      setLoadingMembers(false);
-    }
-  };
-
-  // =====================================================
-  // GET ATTENDANCE
-  // =====================================================
-
-  const fetchAttendance = async () => {
-    try {
-      setLoadingAttendance(true);
-
-      const response = await api.get("/attendance");
-
-      setAttendance(response.data.attendance || []);
-    } catch (error) {
-      console.error("Failed to load attendance:", error);
-
-      setError(
-        error.response?.data?.message || "Failed to load attendance records.",
-      );
-    } finally {
-      setLoadingAttendance(false);
-    }
-  };
-
-  // =====================================================
-  // INITIAL LOAD
-  // =====================================================
+  // ====================================================
+  // Load current user
+  // ====================================================
 
   useEffect(() => {
-    fetchMembers();
-    fetchAttendance();
+    const storedUser = localStorage.getItem("user");
+
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (err) {
+        console.error("Invalid user data:", err);
+      }
+    }
   }, []);
 
-  // =====================================================
-  // CLEAR MESSAGES
-  // =====================================================
+  // ====================================================
+  // Fetch members + today's attendance
+  // ====================================================
 
   useEffect(() => {
-    if (!success && !error) {
-      return;
-    }
+    fetchAttendanceData();
+  }, []);
 
-    const timer = setTimeout(() => {
-      setSuccess("");
-      setError("");
-    }, 4000);
-
-    return () => clearTimeout(timer);
-  }, [success, error]);
-
-  // =====================================================
-  // FORMAT DATE
-  // =====================================================
-
-  const formatDate = (date) => {
-    if (!date) {
-      return "-";
-    }
-
-    return new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  // =====================================================
-  // NORMALIZE DATE
-  // =====================================================
-
-  const normalizeDate = (date) => {
-    if (!date) {
-      return "";
-    }
-
-    const parsedDate = new Date(date);
-
-    return parsedDate.toISOString().split("T")[0];
-  };
-
-  // =====================================================
-  // FIND ATTENDANCE FOR MEMBER + DATE
-  // =====================================================
-
-  const getAttendanceForMember = (memberId) => {
-    return attendance.find((record) => {
-      const recordMemberId = record.member?._id || record.member;
-
-      return (
-        recordMemberId === memberId &&
-        normalizeDate(record.date) === selectedDate
-      );
-    });
-  };
-
-  // =====================================================
-  // MARK ATTENDANCE
-  // =====================================================
-
-  const handleMarkAttendance = async (member, status) => {
-    if (!canManageAttendance) {
-      return;
-    }
-
+  const fetchAttendanceData = async () => {
     try {
-      setSavingId(member._id);
+      setLoading(true);
       setError("");
-      setSuccess("");
 
-      const existingAttendance = getAttendanceForMember(member._id);
+      // -----------------------------------------------
+      // Get all members
+      // -----------------------------------------------
 
-      // =================================================
-      // UPDATE EXISTING ATTENDANCE
-      // =================================================
+      const membersResponse = await api.get("/members");
 
-      if (existingAttendance) {
-        await api.put(`/attendance/${existingAttendance._id}`, {
-          status,
-          date: selectedDate,
-        });
+      const membersData = membersResponse.data?.members || [];
 
-        setSuccess(`${member.fullName}'s attendance was updated successfully.`);
-      }
+      setMembers(membersData);
 
-      // =================================================
-      // CREATE NEW ATTENDANCE
-      // =================================================
-      else {
-        await api.post("/attendance", {
-          member: member._id,
-          date: selectedDate,
-          status,
-        });
+      // -----------------------------------------------
+      // Get attendance records
+      // -----------------------------------------------
 
-        setSuccess(`${member.fullName}'s attendance was marked ${status}.`);
-      }
+      const attendanceResponse = await api.get("/attendance");
 
-      await fetchAttendance();
+      const attendanceData = attendanceResponse.data?.attendance || [];
 
-      setEditingAttendanceId(null);
-    } catch (error) {
-      console.error("Attendance error:", error);
+      // -----------------------------------------------
+      // Only use today's attendance
+      // -----------------------------------------------
 
-      setError(error.response?.data?.message || "Failed to save attendance.");
+      const todayAttendance = {};
+
+      attendanceData.forEach((record) => {
+        if (!record?.member) {
+          return;
+        }
+
+        const memberId =
+          typeof record.member === "object" ? record.member._id : record.member;
+
+        if (!memberId) {
+          return;
+        }
+
+        const recordDate = new Date(record.date);
+
+        const recordDateString = [
+          recordDate.getFullYear(),
+          String(recordDate.getMonth() + 1).padStart(2, "0"),
+          String(recordDate.getDate()).padStart(2, "0"),
+        ].join("-");
+
+        if (recordDateString === today) {
+          todayAttendance[memberId] = {
+            id: record._id,
+            status: record.status,
+          };
+        }
+      });
+
+      setAttendance(todayAttendance);
+    } catch (err) {
+      console.error("Attendance loading error:", err);
+
+      const message =
+        err.response?.data?.message || "Could not load attendance information.";
+
+      setError(message);
     } finally {
-      setSavingId(null);
+      setLoading(false);
     }
   };
 
-  // =====================================================
-  // EDIT ATTENDANCE
-  // =====================================================
-
-  const handleEditAttendance = (record) => {
-    setEditingAttendanceId(record._id);
-  };
-
-  // =====================================================
-  // CANCEL EDIT
-  // =====================================================
-
-  const handleCancelEdit = () => {
-    setEditingAttendanceId(null);
-  };
-
-  // =====================================================
-  // DIVISIONS
-  // =====================================================
+  // ====================================================
+  // Get divisions
+  // ====================================================
 
   const divisions = useMemo(() => {
-    return [
-      ...new Set(members.map((member) => member.division).filter(Boolean)),
-    ].sort();
+    const values = members.map((member) => member.division).filter(Boolean);
+
+    return ["All", ...new Set(values)];
   }, [members]);
 
-  // =====================================================
-  // FILTER MEMBERS
-  // =====================================================
+  // ====================================================
+  // Search + division filter
+  // ====================================================
 
   const filteredMembers = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
-
     return members.filter((member) => {
+      const searchValue = search.toLowerCase().trim();
+
       const matchesSearch =
         !searchValue ||
         member.fullName?.toLowerCase().includes(searchValue) ||
         member.email?.toLowerCase().includes(searchValue) ||
-        member.phone?.toLowerCase().includes(searchValue);
+        member.division?.toLowerCase().includes(searchValue);
 
       const matchesDivision =
-        divisionFilter === "All" || member.division === divisionFilter;
+        divisionFilter === "All" ||
+        member.division?.toLowerCase() === divisionFilter.toLowerCase();
 
       return matchesSearch && matchesDivision;
     });
   }, [members, search, divisionFilter]);
 
-  // =====================================================
-  // PAGINATION
-  // =====================================================
+  // ====================================================
+  // Pagination
+  // ====================================================
 
   const totalPages = Math.max(
     1,
@@ -268,556 +236,473 @@ const Attendance = () => {
 
   const startIndex = (safeCurrentPage - 1) * itemsPerPage;
 
-  const displayedMembers = filteredMembers.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
+  const endIndex = startIndex + itemsPerPage;
 
-  useEffect(() => {
+  const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
+
+  // ====================================================
+  // Change items per page
+  // ====================================================
+
+  const handleItemsPerPageChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
     setCurrentPage(1);
-  }, [search, divisionFilter, itemsPerPage]);
-
-  // =====================================================
-  // STATISTICS
-  // =====================================================
-
-  const todayAttendance = members.map((member) => ({
-    member,
-    record: getAttendanceForMember(member._id),
-  }));
-
-  const presentCount = todayAttendance.filter(
-    ({ record }) => record?.status === "present",
-  ).length;
-
-  const absentCount = todayAttendance.filter(
-    ({ record }) => record?.status === "absent",
-  ).length;
-
-  const lateCount = todayAttendance.filter(
-    ({ record }) => record?.status === "late",
-  ).length;
-
-  const notMarkedCount =
-    members.length - presentCount - absentCount - lateCount;
-
-  const attendanceRate =
-    members.length > 0
-      ? Math.round(((presentCount + lateCount) / members.length) * 100)
-      : 0;
-
-  // =====================================================
-  // STATUS STYLES
-  // =====================================================
-
-  const getStatusStyle = (status) => {
-    if (status === "present") {
-      return "bg-[#EAF8F0] text-[#20A85A]";
-    }
-
-    if (status === "absent") {
-      return "bg-[#FFF0F0] text-[#E34D59]";
-    }
-
-    if (status === "late") {
-      return "bg-[#FFF7E6] text-[#D98A00]";
-    }
-
-    return "bg-[#F1F3F5] text-[#858B93]";
   };
 
-  // =====================================================
-  // STATUS LABEL
-  // =====================================================
+  // ====================================================
+  // Change page
+  // ====================================================
 
-  const getStatusLabel = (status) => {
-    if (status === "present") {
-      return "Present";
+  const goToPage = (page) => {
+    if (page < 1 || page > totalPages) {
+      return;
     }
 
-    if (status === "absent") {
-      return "Absent";
-    }
-
-    if (status === "late") {
-      return "Late";
-    }
-
-    return "Not Marked";
+    setCurrentPage(page);
   };
 
-  // =====================================================
-  // INITIALS
-  // =====================================================
+  // ====================================================
+  // Select Present / Absent
+  // ====================================================
 
-  const getInitials = (name) => {
-    if (!name) {
-      return "M";
-    }
+  const handleAttendanceChange = (memberId, status) => {
+    setAttendance((previous) => ({
+      ...previous,
+      [memberId]: {
+        ...previous[memberId],
+        status,
+      },
+    }));
 
-    const parts = name.trim().split(/\s+/);
-
-    if (parts.length === 1) {
-      return parts[0].charAt(0).toUpperCase();
-    }
-
-    return (
-      parts[0].charAt(0) + parts[parts.length - 1].charAt(0)
-    ).toUpperCase();
+    setSuccess("");
+    setError("");
   };
 
-  // =====================================================
-  // LOADING
-  // =====================================================
+  // ====================================================
+  // Save attendance
+  //
+  // Existing record -> PUT
+  // New record      -> POST
+  // ====================================================
 
-  const loading = loadingMembers || loadingAttendance;
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError("");
+      setSuccess("");
 
-  // =====================================================
-  // UI
-  // =====================================================
+      const recordsToSave = Object.entries(attendance).filter(
+        ([, record]) => record?.status,
+      );
+
+      if (recordsToSave.length === 0) {
+        setError("Please select Present or Absent for at least one member.");
+
+        setSaving(false);
+        return;
+      }
+
+      // ------------------------------------------------
+      // Save every changed attendance record
+      // ------------------------------------------------
+
+      const requests = recordsToSave.map(async ([memberId, record]) => {
+        // ----------------------------------------------
+        // Existing attendance -> update
+        // ----------------------------------------------
+
+        if (record.id) {
+          return api.put(`/attendance/${record.id}`, {
+            status: record.status,
+            date: today,
+          });
+        }
+
+        // ----------------------------------------------
+        // New attendance -> create
+        // ----------------------------------------------
+
+        return api.post("/attendance", {
+          member: memberId,
+          date: today,
+          status: record.status,
+        });
+      });
+
+      await Promise.all(requests);
+
+      setSuccess("Attendance saved successfully.");
+
+      // ------------------------------------------------
+      // Reload from backend
+      // ------------------------------------------------
+
+      await fetchAttendanceData();
+    } catch (err) {
+      console.error("Save attendance error:", err);
+
+      const message =
+        err.response?.data?.message || "Could not save attendance.";
+
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ====================================================
+  // Heads Up button
+  //
+  // Backend doesn't support "excused".
+  // Therefore this is currently UI-only.
+  // ====================================================
+
+  const handleHeadsUp = (member) => {
+    alert(
+      `Heads Up selected for ${member.fullName}. Your backend currently supports only Present and Absent attendance statuses.`,
+    );
+  };
+
+  // ====================================================
+  // User information
+  // ====================================================
+
+  const userName =
+    currentUser?.fullName ||
+    currentUser?.name ||
+    currentUser?.username ||
+    "Admin User";
+
+  const userRole = currentUser?.role || "user";
+
+  const userInitials = userName
+    .split(" ")
+    .filter(Boolean)
+    .map((name) => name[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  // ====================================================
+  // Page numbers
+  // ====================================================
+
+  const pageNumbers = [];
+
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(i);
+  }
+
+  // ====================================================
+  // Render
+  // ====================================================
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB]">
-      {/* =================================================
-          PAGE HEADER
+    <div className="space-y-5">
+      {/* ==================================================
+          HEADER
       ================================================== */}
 
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between">
+        {/* Page title */}
         <div>
-          <h1 className="text-[22px] font-bold text-[#17191C]">Attendance</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            Attendance
+          </h1>
 
-          <p className="mt-1 text-[13px] text-[#8A9099]">
-            Track and manage member attendance
+          <p className="mt-0.5 text-xs text-slate-400">
+            All Attendance
+            <span className="px-1">&gt;</span>
+            Attendance
+            <span className="px-1">&gt;</span>
+            Group 1
           </p>
         </div>
 
-        {/* User */}
-        <div className="flex items-center">
-          <div className="flex h-11 items-center gap-2 rounded-xl border border-[#E3E6EA] bg-white px-3 shadow-sm">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B57D0] text-xs font-bold text-white">
-              {getInitials(user?.fullName)}
-            </div>
-
-            <div className="leading-tight">
-              <p className="max-w-[120px] truncate text-xs font-semibold text-[#20242A]">
-                {user?.fullName}
-              </p>
-
-              <p className="text-[10px] uppercase text-[#9298A1]">
-                {user?.role}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =================================================
-          ALERTS
-      ================================================== */}
-
-      {error && (
-        <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-600">
-          {success}
-        </div>
-      )}
-
-      {/* =================================================
-          STATISTICS
-      ================================================== */}
-
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Present */}
-
-        <div className="rounded-2xl border border-[#E4E7EB] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)]">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium text-[#9298A1]">Present</p>
-
-              <h2 className="mt-2 text-2xl font-bold text-[#20242A]">
-                {presentCount}
-              </h2>
-
-              <p className="mt-1 text-[11px] text-[#A0A5AC]">Members present</p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAF8F0] text-[#20A85A]">
-              ✓
-            </div>
-          </div>
-        </div>
-
-        {/* Absent */}
-
-        <div className="rounded-2xl border border-[#E4E7EB] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)]">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium text-[#9298A1]">Absent</p>
-
-              <h2 className="mt-2 text-2xl font-bold text-[#20242A]">
-                {absentCount}
-              </h2>
-
-              <p className="mt-1 text-[11px] text-[#A0A5AC]">Members absent</p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF0F0] text-[#E34D59]">
-              ×
-            </div>
-          </div>
-        </div>
-
-        {/* Late */}
-
-        <div className="rounded-2xl border border-[#E4E7EB] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)]">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium text-[#9298A1]">Late</p>
-
-              <h2 className="mt-2 text-2xl font-bold text-[#20242A]">
-                {lateCount}
-              </h2>
-
-              <p className="mt-1 text-[11px] text-[#A0A5AC]">Members late</p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFF7E6] text-[#D98A00]">
-              !
-            </div>
-          </div>
-        </div>
-
-        {/* Rate */}
-
-        <div className="rounded-2xl border border-[#E4E7EB] bg-white p-5 shadow-[0_2px_8px_rgba(20,30,50,0.03)]">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-medium text-[#9298A1]">
-                Attendance Rate
-              </p>
-
-              <h2 className="mt-2 text-2xl font-bold text-[#20242A]">
-                {attendanceRate}%
-              </h2>
-
-              <p className="mt-1 text-[11px] text-[#A0A5AC]">
-                {notMarkedCount} not marked
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF3FF] text-[#0B57D0]">
-              %
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =================================================
-          MAIN CARD
-      ================================================== */}
-
-      <div className="rounded-2xl border border-[#E4E7EB] bg-white shadow-[0_2px_8px_rgba(20,30,50,0.03)]">
-        {/* =================================================
-            TOOLBAR
-        ================================================== */}
-
-        <div className="flex flex-col gap-4 border-b border-[#ECEEF1] px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-          {/* Date */}
-
-          <div>
-            <label className="mb-2 block text-[11px] font-semibold text-[#777D85]">
-              Attendance Date
-            </label>
+        {/* Header right */}
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="relative hidden sm:block">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
             <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="h-11 rounded-xl border border-[#E2E5E9] bg-white px-4 text-xs text-[#343940] outline-none focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
+              type="text"
+              placeholder="Search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-9 w-36 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-blue-500 dark:border-slate-700 dark:bg-[#11161D] dark:text-slate-200"
             />
           </div>
 
-          {/* Search / Filter */}
+          {/* Notification */}
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-[#11161D] dark:text-slate-300"
+          >
+            <Bell className="h-4 w-4" />
+          </button>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            {/* Search */}
-
-            <div className="relative w-full sm:w-[240px]">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#747A83]">
-                ⌕
-              </span>
-
-              <input
-                type="text"
-                placeholder="Search member..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-11 w-full rounded-xl border border-[#E2E5E9] bg-white pl-10 pr-4 text-xs text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
-              />
+          {/* User */}
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 dark:border-slate-700 dark:bg-[#11161D]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-200 text-[11px] font-bold text-slate-700 dark:bg-slate-700 dark:text-white">
+              {userInitials || "U"}
             </div>
 
-            {/* Division */}
+            <div className="hidden text-left sm:block">
+              <p className="text-[11px] font-semibold leading-tight text-slate-800 dark:text-slate-100">
+                {userName}
+              </p>
 
-            <select
-              value={divisionFilter}
-              onChange={(e) => setDivisionFilter(e.target.value)}
-              className="h-11 rounded-xl border border-[#E2E5E9] bg-white px-4 text-xs font-medium text-[#343940] outline-none focus:border-[#0B57D0]"
+              <p className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-slate-400">
+                {userRole}
+              </p>
+            </div>
+
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* ==================================================
+          MAIN ATTENDANCE CARD
+      ================================================== */}
+
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm transition-colors duration-200 dark:border-slate-800 dark:bg-[#11161D]">
+        {/* ==================================================
+            ACTION BAR
+        ================================================== */}
+
+        <div className="mb-4 flex items-center justify-between gap-3">
+          {/* Search */}
+          <div className="relative w-48">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+
+            <input
+              type="text"
+              placeholder="Search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-[11px] text-slate-700 outline-none transition focus:border-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            />
+          </div>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-2">
+            {/* Save */}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="h-9 min-w-[70px] rounded-lg bg-[#0052CC] px-4 text-[11px] font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <option value="All">All Divisions</option>
+              {saving ? "Saving..." : "Save"}
+            </button>
 
-              {divisions.map((division) => (
-                <option key={division} value={division}>
-                  {division}
-                </option>
-              ))}
-            </select>
+            {/* Filter */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowFilter((previous) => !previous)}
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                Filter
+              </button>
+
+              {/* Filter dropdown */}
+              {showFilter && (
+                <div className="absolute right-0 top-11 z-20 w-44 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-[#11161D]">
+                  <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    Division
+                  </p>
+
+                  {divisions.map((division) => (
+                    <button
+                      key={division}
+                      type="button"
+                      onClick={() => {
+                        setDivisionFilter(division);
+                        setCurrentPage(1);
+                        setShowFilter(false);
+                      }}
+                      className={`w-full rounded-lg px-2 py-1.5 text-left text-[11px] transition ${
+                        divisionFilter === division
+                          ? "bg-blue-50 font-semibold text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+                          : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {division}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* =================================================
-            PERMISSION MESSAGE
+        {/* ==================================================
+            SUCCESS MESSAGE
         ================================================== */}
 
-        {!canManageAttendance && (
-          <div className="border-b border-[#ECEEF1] bg-[#FFF8E8] px-5 py-3 text-xs text-[#9A6B00] sm:px-6">
-            You have view-only access to attendance.
+        {success && (
+          <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-medium text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400">
+            {success}
           </div>
         )}
 
-        {/* =================================================
+        {/* ==================================================
+            ERROR MESSAGE
+        ================================================== */}
+
+        {error && (
+          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
+        {/* ==================================================
             TABLE
         ================================================== */}
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[950px] border-collapse">
+          <table className="w-full min-w-[650px] border-collapse text-left">
+            {/* Table header */}
             <thead>
-              <tr className="border-b border-[#ECEEF1] text-left">
-                <th className="px-6 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Member
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <th className="px-3 pb-3 text-[10px] font-medium text-slate-400">
+                  Member Name
                 </th>
 
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Division
+                <th className="px-3 pb-3 text-[10px] font-medium text-slate-400">
+                  Attendance
                 </th>
 
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Year
-                </th>
-
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Status
-                </th>
-
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Marked By
-                </th>
-
-                <th className="px-6 py-4 text-right text-[11px] font-semibold text-[#969BA3]">
-                  Action
+                <th className="px-3 pb-3 text-[10px] font-medium text-slate-400">
+                  Excused
                 </th>
               </tr>
             </thead>
 
+            {/* Table body */}
             <tbody>
               {/* Loading */}
-
               {loading && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-16 text-center">
-                    <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-2 border-[#DCE1E7] border-t-[#0B57D0]" />
-
-                    <p className="text-xs font-medium text-[#8C929A]">
-                      Loading attendance...
-                    </p>
+                  <td
+                    colSpan="3"
+                    className="py-12 text-center text-xs text-slate-400"
+                  >
+                    Loading attendance...
                   </td>
                 </tr>
               )}
 
-              {/* Empty */}
-
-              {!loading && displayedMembers.length === 0 && (
+              {/* No members */}
+              {!loading && paginatedMembers.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-16 text-center">
-                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F0F2F5] text-xl">
-                      👤
-                    </div>
-
-                    <p className="text-sm font-semibold text-[#343940]">
-                      No members found
-                    </p>
-
-                    <p className="mt-1 text-xs text-[#9298A1]">
-                      Try changing your search or division filter.
-                    </p>
+                  <td
+                    colSpan="3"
+                    className="py-12 text-center text-xs text-slate-400"
+                  >
+                    No members found.
                   </td>
                 </tr>
               )}
 
               {/* Members */}
-
               {!loading &&
-                displayedMembers.map((member) => {
-                  const record = getAttendanceForMember(member._id);
+                paginatedMembers.map((member, index) => {
+                  const memberId = getMemberId(member);
 
-                  const isEditing = editingAttendanceId === record?._id;
+                  const currentStatus = attendance[memberId]?.status || "";
 
                   return (
                     <tr
-                      key={member._id}
-                      className="border-b border-[#F0F1F3] transition hover:bg-[#FAFBFC]"
+                      key={memberId}
+                      className="border-b border-slate-100 transition hover:bg-slate-50/60 dark:border-slate-800/60 dark:hover:bg-slate-800/30"
                     >
-                      {/* Member */}
+                      {/* ==================================
+                          MEMBER
+                      =================================== */}
 
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E7EEF9] text-[10px] font-bold text-[#0B57D0]">
-                            {member.avatar ? (
-                              <img
-                                src={member.avatar}
-                                alt={member.fullName}
-                                className="h-full w-full rounded-full object-cover"
-                              />
-                            ) : (
-                              getInitials(member.fullName)
-                            )}
-                          </div>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={getAvatar(startIndex + index)}
+                            alt={member.fullName}
+                            className="h-7 w-7 rounded-full object-cover"
+                          />
 
                           <div>
-                            <p className="text-xs font-semibold text-[#30343A]">
+                            <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100">
                               {member.fullName}
                             </p>
 
-                            <p className="mt-0.5 text-[10px] text-[#A0A5AC]">
-                              {member.email}
+                            <p className="text-[9px] text-slate-400">
+                              {member.division || "No division"}
+                              {" · "}
+                              {formatYear(member.year)}
                             </p>
                           </div>
                         </div>
                       </td>
 
-                      {/* Division */}
+                      {/* ==================================
+                          ATTENDANCE
+                      =================================== */}
 
-                      <td className="px-4 py-4 text-xs text-[#555B64]">
-                        {member.division || "-"}
-                      </td>
-
-                      {/* Year */}
-
-                      <td className="px-4 py-4 text-xs text-[#555B64]">
-                        {member.year
-                          ? `${member.year}${
-                              member.year === 1
-                                ? "st"
-                                : member.year === 2
-                                  ? "nd"
-                                  : member.year === 3
-                                    ? "rd"
-                                    : "th"
-                            }`
-                          : "-"}
-                      </td>
-
-                      {/* Status */}
-
-                      <td className="px-4 py-4">
-                        {record ? (
-                          <span
-                            className={`inline-flex rounded-md px-2.5 py-1 text-[10px] font-semibold ${getStatusStyle(
-                              record.status,
-                            )}`}
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1.5">
+                          {/* Present */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleAttendanceChange(memberId, "present")
+                            }
+                            className={`rounded-full border px-2.5 py-1 text-[9px] font-medium transition ${
+                              currentStatus === "present"
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-200 bg-white text-slate-500 hover:border-blue-300 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                            }`}
                           >
-                            {getStatusLabel(record.status)}
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-md bg-[#F1F3F5] px-2.5 py-1 text-[10px] font-semibold text-[#858B93]">
-                            Not Marked
-                          </span>
-                        )}
+                            Present
+                          </button>
+
+                          {/* Absent */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleAttendanceChange(memberId, "absent")
+                            }
+                            className={`rounded-full border px-2.5 py-1 text-[9px] font-medium transition ${
+                              currentStatus === "absent"
+                                ? "border-red-500 bg-red-500 text-white"
+                                : "border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:text-red-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+                            }`}
+                          >
+                            Absent
+                          </button>
+                        </div>
                       </td>
 
-                      {/* Marked By */}
+                      {/* ==================================
+                          HEADS UP
+                      =================================== */}
 
-                      <td className="px-4 py-4 text-xs text-[#555B64]">
-                        {record?.markedBy?.fullName || "-"}
-                      </td>
-
-                      {/* Action */}
-
-                      <td className="px-6 py-4 text-right">
-                        {!canManageAttendance ? (
-                          <span className="text-[10px] text-[#A0A5AC]">
-                            View only
-                          </span>
-                        ) : (
-                          <div className="flex justify-end gap-2">
-                            {(!record || isEditing) && (
-                              <>
-                                {/* Present */}
-
-                                <button
-                                  type="button"
-                                  disabled={savingId === member._id}
-                                  onClick={() =>
-                                    handleMarkAttendance(member, "present")
-                                  }
-                                  className="rounded-lg bg-[#EAF8F0] px-3 py-2 text-[10px] font-semibold text-[#20A85A] transition hover:bg-[#D8F3E4] disabled:opacity-50"
-                                >
-                                  Present
-                                </button>
-
-                                {/* Late */}
-
-                                <button
-                                  type="button"
-                                  disabled={savingId === member._id}
-                                  onClick={() =>
-                                    handleMarkAttendance(member, "late")
-                                  }
-                                  className="rounded-lg bg-[#FFF7E6] px-3 py-2 text-[10px] font-semibold text-[#D98A00] transition hover:bg-[#FFEFCF] disabled:opacity-50"
-                                >
-                                  Late
-                                </button>
-
-                                {/* Absent */}
-
-                                <button
-                                  type="button"
-                                  disabled={savingId === member._id}
-                                  onClick={() =>
-                                    handleMarkAttendance(member, "absent")
-                                  }
-                                  className="rounded-lg bg-[#FFF0F0] px-3 py-2 text-[10px] font-semibold text-[#E34D59] transition hover:bg-[#FFE0E0] disabled:opacity-50"
-                                >
-                                  Absent
-                                </button>
-
-                                {isEditing && (
-                                  <button
-                                    type="button"
-                                    onClick={handleCancelEdit}
-                                    className="rounded-lg border border-[#E1E4E8] px-3 py-2 text-[10px] font-semibold text-[#777D85]"
-                                  >
-                                    Cancel
-                                  </button>
-                                )}
-                              </>
-                            )}
-
-                            {record && !isEditing && (
-                              <button
-                                type="button"
-                                onClick={() => handleEditAttendance(record)}
-                                className="rounded-lg border border-[#DDE1E6] bg-white px-3 py-2 text-[10px] font-semibold text-[#555B64] transition hover:border-[#0B57D0] hover:text-[#0B57D0]"
-                              >
-                                Change
-                              </button>
-                            )}
-                          </div>
-                        )}
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => handleHeadsUp(member)}
+                          className="rounded-md bg-[#0052CC] px-3 py-1.5 text-[9px] font-semibold text-white transition hover:bg-blue-700"
+                        >
+                          Heads Up
+                        </button>
                       </td>
                     </tr>
                   );
@@ -826,73 +711,68 @@ const Attendance = () => {
           </table>
         </div>
 
-        {/* =================================================
-            PAGINATION
+        {/* ==================================================
+            FOOTER / PAGINATION
         ================================================== */}
 
-        <div className="flex flex-col gap-4 border-t border-[#ECEEF1] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[11px] text-[#8D939B]">
-            <span>Show</span>
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-800">
+          {/* Showing */}
+          <div className="flex items-center gap-2 text-[9px] text-slate-400">
+            <span>Showing</span>
 
             <select
               value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="rounded-md border border-[#E1E4E8] bg-white px-2 py-1 text-[11px] text-[#555B64] outline-none"
+              onChange={handleItemsPerPageChange}
+              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[9px] font-medium text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
             >
               <option value={10}>10</option>
-              <option value={25}>25</option>
+              <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
 
             <span>
-              {filteredMembers.length === 0 ? "0" : startIndex + 1} -{" "}
-              {Math.min(startIndex + itemsPerPage, filteredMembers.length)} of{" "}
-              {filteredMembers.length}
+              Showing {filteredMembers.length === 0 ? 0 : startIndex + 1} to{" "}
+              {Math.min(endIndex, filteredMembers.length)} out of{" "}
+              {filteredMembers.length} records
             </span>
           </div>
 
+          {/* Pagination */}
           <div className="flex items-center gap-1">
             {/* Previous */}
-
             <button
               type="button"
+              onClick={() => goToPage(safeCurrentPage - 1)}
               disabled={safeCurrentPage === 1}
-              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-xs text-[#777D85] transition hover:bg-[#F1F3F5] disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
             >
-              ‹
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
 
             {/* Pages */}
-
-            {Array.from({ length: totalPages }, (_, index) => index + 1)
-              .slice(0, 5)
-              .map((page) => (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => setCurrentPage(page)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[11px] font-semibold transition ${
-                    safeCurrentPage === page
-                      ? "bg-[#0B57D0] text-white shadow-sm"
-                      : "text-[#777D85] hover:bg-[#F1F3F5]"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+            {pageNumbers.map((page) => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => goToPage(page)}
+                className={`flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-medium transition ${
+                  page === safeCurrentPage
+                    ? "border border-blue-600 bg-white text-blue-600 dark:bg-slate-900"
+                    : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
 
             {/* Next */}
-
             <button
               type="button"
+              onClick={() => goToPage(safeCurrentPage + 1)}
               disabled={safeCurrentPage === totalPages}
-              onClick={() =>
-                setCurrentPage((page) => Math.min(totalPages, page + 1))
-              }
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-xs text-[#777D85] transition hover:bg-[#F1F3F5] disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
             >
-              ›
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>

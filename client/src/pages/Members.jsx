@@ -1,22 +1,108 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import {
+  Search,
+  Plus,
+  Filter,
+  Edit3,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
+
+// ---------------------------------------------------------
+// UI-ONLY DATA
+// These fields do not exist in your backend Member model.
+// They are only used to make the page match your Figma.
+// ---------------------------------------------------------
+
+const getUiMemberData = (index) => {
+  const attendanceStatuses = [
+    "Active",
+    "Active",
+    "Needs Attention",
+    "Active",
+    "Needs Attention",
+    "Active",
+    "Inactive",
+    "Inactive",
+    "Needs Attention",
+    "Active",
+  ];
+
+  const campusStatuses = [
+    "On Campus",
+    "Off Campus",
+    "On Campus",
+    "On Campus",
+    "Off Campus",
+    "On Campus",
+    "Off Campus",
+    "On Campus",
+    "On Campus",
+    "Off Campus",
+  ];
+
+  return {
+    memberId: `UGR/${25603 + index}/14`,
+    attendance:
+      attendanceStatuses[index % attendanceStatuses.length] || "Active",
+    status: campusStatuses[index % campusStatuses.length] || "On Campus",
+    avatar: `https://i.pravatar.cc/150?img=${(index % 20) + 1}`,
+  };
+};
+
+// ---------------------------------------------------------
+// YEAR FORMATTER
+// ---------------------------------------------------------
+
+const formatYear = (year) => {
+  if (year === undefined || year === null || year === "") {
+    return "-";
+  }
+
+  const number = Number(String(year).replace(/\D/g, ""));
+
+  if (!number) {
+    return "-";
+  }
+
+  if (number === 1) return "1st";
+  if (number === 2) return "2nd";
+  if (number === 3) return "3rd";
+
+  return `${number}th`;
+};
+
+// ---------------------------------------------------------
+// MEMBERS COMPONENT
+// ---------------------------------------------------------
 
 const Members = () => {
-  const { user } = useAuth();
-
+  // Backend members
   const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
+  // Current logged-in user
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Search/filter
   const [search, setSearch] = useState("");
   const [divisionFilter, setDivisionFilter] = useState("All");
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingMemberId, setEditingMemberId] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
 
+  // Loading/error
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Modal
+  const [showModal, setShowModal] = useState(false);
+  const [editingMember, setEditingMember] = useState(null);
+
+  // Form
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -25,15 +111,30 @@ const Members = () => {
     year: "",
   });
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [formError, setFormError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const canManageMembers =
-    user?.role === "admin" || user?.role === "supervisor";
+  // -------------------------------------------------------
+  // GET CURRENT USER FROM LOCAL STORAGE
+  // -------------------------------------------------------
 
-  // =========================
-  // GET MEMBERS
-  // =========================
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+
+      if (storedUser) {
+        setCurrentUser(JSON.parse(storedUser));
+      }
+    } catch (err) {
+      console.error("Could not read logged-in user:", err);
+    }
+  }, []);
+
+  // -------------------------------------------------------
+  // FETCH MEMBERS FROM BACKEND
+  // GET /members
+  // -------------------------------------------------------
+
   const fetchMembers = async () => {
     try {
       setLoading(true);
@@ -41,12 +142,15 @@ const Members = () => {
 
       const response = await api.get("/members");
 
-      setMembers(response.data.members || []);
-    } catch (error) {
-      console.error("Failed to load members:", error);
+      const backendMembers = response.data?.members || [];
+
+      setMembers(backendMembers);
+    } catch (err) {
+      console.error("Failed to fetch members:", err);
 
       setError(
-        error.response?.data?.message || "Failed to load members records.",
+        err.response?.data?.message ||
+          "Unable to load members. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -57,11 +161,116 @@ const Members = () => {
     fetchMembers();
   }, []);
 
-  // =========================
-  // FORM INPUT
-  // =========================
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  // -------------------------------------------------------
+  // SEARCH + DIVISION FILTER
+  // -------------------------------------------------------
+
+  const filteredMembers = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
+
+    return members.filter((member) => {
+      const fullName = member.fullName?.toLowerCase() || "";
+      const email = member.email?.toLowerCase() || "";
+      const division = member.division?.toLowerCase() || "";
+      const phone = member.phone?.toLowerCase() || "";
+
+      const matchesSearch =
+        !searchValue ||
+        fullName.includes(searchValue) ||
+        email.includes(searchValue) ||
+        division.includes(searchValue) ||
+        phone.includes(searchValue);
+
+      const matchesDivision =
+        divisionFilter === "All" || division === divisionFilter.toLowerCase();
+
+      return matchesSearch && matchesDivision;
+    });
+  }, [members, search, divisionFilter]);
+
+  // -------------------------------------------------------
+  // DIVISIONS FOR FILTER
+  // -------------------------------------------------------
+
+  const divisions = useMemo(() => {
+    const uniqueDivisions = [
+      ...new Set(
+        members
+          .map((member) => member.division)
+          .filter(Boolean)
+          .map((division) => division.trim()),
+      ),
+    ];
+
+    return uniqueDivisions;
+  }, [members]);
+
+  // -------------------------------------------------------
+  // PAGINATION
+  // -------------------------------------------------------
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredMembers.length / recordsPerPage),
+  );
+
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * recordsPerPage;
+
+  const paginatedMembers = filteredMembers.slice(
+    startIndex,
+    startIndex + recordsPerPage,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, divisionFilter, recordsPerPage]);
+
+  // -------------------------------------------------------
+  // OPEN ADD MEMBER MODAL
+  // -------------------------------------------------------
+
+  const handleAddMember = () => {
+    setEditingMember(null);
+
+    setFormData({
+      fullName: "",
+      email: "",
+      phone: "",
+      division: "",
+      year: "",
+    });
+
+    setFormError("");
+    setShowModal(true);
+  };
+
+  // -------------------------------------------------------
+  // OPEN EDIT MEMBER MODAL
+  // -------------------------------------------------------
+
+  const handleEditMember = (member) => {
+    setEditingMember(member);
+
+    setFormData({
+      fullName: member.fullName || "",
+      email: member.email || "",
+      phone: member.phone || "",
+      division: member.division || "",
+      year: member.year || "",
+    });
+
+    setFormError("");
+    setShowModal(true);
+  };
+
+  // -------------------------------------------------------
+  // FORM CHANGE
+  // -------------------------------------------------------
+
+  const handleFormChange = (event) => {
+    const { name, value } = event.target;
 
     setFormData((previous) => ({
       ...previous,
@@ -69,99 +278,80 @@ const Members = () => {
     }));
   };
 
-  // =========================
-  // RESET FORM
-  // =========================
-  const resetForm = () => {
-    setFormData({
-      fullName: "",
-      email: "",
-      phone: "",
-      division: "",
-      year: "",
-    });
-
-    setEditingMemberId(null);
-    setShowForm(false);
-  };
-
-  // =========================
-  // ADD MEMBER
-  // =========================
-  const handleAddMember = () => {
-    setFormData({
-      fullName: "",
-      email: "",
-      phone: "",
-      division: "",
-      year: "",
-    });
-
-    setEditingMemberId(null);
-    setShowForm(true);
-    setError("");
-  };
-
-  // =========================
-  // EDIT MEMBER
-  // =========================
-  const handleEdit = (member) => {
-    setEditingMemberId(member._id);
-
-    setFormData({
-      fullName: member.fullName || "",
-      email: member.email || "",
-      phone: member.phone || "",
-      division: member.division || "",
-      year: member.year ?? "",
-    });
-
-    setShowForm(true);
-    setError("");
-  };
-
-  // =========================
+  // -------------------------------------------------------
   // CREATE / UPDATE MEMBER
-  // =========================
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // POST /members
+  // PUT /members/:id
+  // -------------------------------------------------------
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    setFormError("");
+
+    if (
+      !formData.fullName.trim() ||
+      !formData.email.trim() ||
+      !formData.phone.trim() ||
+      !formData.division.trim() ||
+      !String(formData.year).trim()
+    ) {
+      setFormError("Please fill in all fields.");
+      return;
+    }
 
     try {
       setSaving(true);
-      setError("");
 
-      const data = {
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        division: formData.division.trim(),
-        year: Number(formData.year),
-      };
-
-      if (editingMemberId) {
-        await api.put(`/members/${editingMemberId}`, data);
+      if (editingMember) {
+        await api.put(`/members/${editingMember._id}`, {
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          division: formData.division,
+          year: Number(formData.year),
+        });
       } else {
-        await api.post("/members", data);
+        await api.post("/members", {
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          division: formData.division,
+          year: Number(formData.year),
+        });
       }
 
+      setShowModal(false);
+
+      setFormData({
+        fullName: "",
+        email: "",
+        phone: "",
+        division: "",
+        year: "",
+      });
+
       await fetchMembers();
+    } catch (err) {
+      console.error("Save member error:", err);
 
-      resetForm();
-    } catch (error) {
-      console.error("Failed to save member:", error);
-
-      setError(error.response?.data?.message || "Failed to save member.");
+      setFormError(
+        err.response?.data?.message ||
+          "Something went wrong while saving the member.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  // =========================
+  // -------------------------------------------------------
   // DELETE MEMBER
-  // =========================
-  const handleDelete = async (id) => {
+  // DELETE /members/:id
+  // -------------------------------------------------------
+
+  const handleDeleteMember = async (member) => {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this member?",
+      `Are you sure you want to delete ${member.fullName}?`,
     );
 
     if (!confirmed) {
@@ -169,209 +359,169 @@ const Members = () => {
     }
 
     try {
-      setDeletingId(id);
-      setError("");
-
-      await api.delete(`/members/${id}`);
+      await api.delete(`/members/${member._id}`);
 
       await fetchMembers();
-    } catch (error) {
-      console.error("Failed to delete member:", error);
+    } catch (err) {
+      console.error("Delete member error:", err);
 
-      setError(error.response?.data?.message || "Failed to delete member.");
-    } finally {
-      setDeletingId(null);
+      alert(err.response?.data?.message || "Unable to delete this member.");
     }
   };
 
-  // =========================
-  // DIVISIONS
-  // =========================
-  const divisions = useMemo(() => {
-    const uniqueDivisions = [
-      ...new Set(members.map((member) => member.division).filter(Boolean)),
-    ];
+  // -------------------------------------------------------
+  // ATTENDANCE BADGE
+  // UI ONLY
+  // -------------------------------------------------------
 
-    return uniqueDivisions.sort();
-  }, [members]);
-
-  // =========================
-  // SEARCH + FILTER
-  // =========================
-  const filteredMembers = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
-
-    return members.filter((member) => {
-      const matchesSearch =
-        !searchValue ||
-        member.fullName?.toLowerCase().includes(searchValue) ||
-        member.email?.toLowerCase().includes(searchValue) ||
-        member.phone?.toLowerCase().includes(searchValue) ||
-        member.division?.toLowerCase().includes(searchValue);
-
-      const matchesDivision =
-        divisionFilter === "All" || member.division === divisionFilter;
-
-      return matchesSearch && matchesDivision;
-    });
-  }, [members, search, divisionFilter]);
-
-  // =========================
-  // PAGINATION
-  // =========================
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredMembers.length / itemsPerPage),
-  );
-
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-
-  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
-
-  const displayedMembers = filteredMembers.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, divisionFilter, itemsPerPage]);
-
-  // =========================
-  // INITIALS
-  // =========================
-  const getInitials = (name) => {
-    if (!name) {
-      return "M";
+  const getAttendanceBadge = (status) => {
+    if (status === "Active") {
+      return (
+        <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+          Active
+        </span>
+      );
     }
 
-    const parts = name.trim().split(/\s+/);
-
-    if (parts.length === 1) {
-      return parts[0].charAt(0).toUpperCase();
+    if (status === "Needs Attention") {
+      return (
+        <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+          Needs Attention
+        </span>
+      );
     }
 
     return (
-      parts[0].charAt(0) + parts[parts.length - 1].charAt(0)
-    ).toUpperCase();
+      <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-500 dark:bg-rose-950/40 dark:text-rose-400">
+        Inactive
+      </span>
+    );
   };
 
-  // =========================
-  // MEMBER ID
-  // =========================
-  const getMemberId = (member, index) => {
-    if (member.studentId) {
-      return member.studentId;
+  // -------------------------------------------------------
+  // CAMPUS STATUS BADGE
+  // UI ONLY
+  // -------------------------------------------------------
+
+  const getStatusBadge = (status) => {
+    if (status === "Off Campus") {
+      return (
+        <span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-500 dark:bg-rose-950/30 dark:text-rose-400">
+          Off Campus
+        </span>
+      );
     }
 
-    if (member._id) {
-      return `MEM-${member._id.slice(-6).toUpperCase()}`;
-    }
-
-    return `MEM-${index + 1}`;
+    return (
+      <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
+        On Campus
+      </span>
+    );
   };
 
-  // =========================
-  // YEAR FORMAT
-  // =========================
-  const formatYear = (year) => {
-    if (!year) {
-      return "-";
-    }
+  // -------------------------------------------------------
+  // CURRENT USER DISPLAY
+  // -------------------------------------------------------
 
-    if (year === 1) {
-      return "1st";
-    }
+  const userName =
+    currentUser?.fullName ||
+    currentUser?.name ||
+    currentUser?.username ||
+    "Admin User";
 
-    if (year === 2) {
-      return "2nd";
-    }
+  const userRole = currentUser?.role || "admin";
 
-    if (year === 3) {
-      return "3rd";
-    }
+  const userInitials = userName
+    .split(" ")
+    .filter(Boolean)
+    .map((name) => name[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
-    return `${year}th`;
-  };
+  // -------------------------------------------------------
+  // RENDER
+  // -------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] p-4 sm:p-6 lg:p-8">
-      {/* ======================================
-          PAGE HEADER
-      ====================================== */}
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#17191C]">All Members</h1>
+    <div className="space-y-5">
+      {/* ===================================================
+          HEADER
+      =================================================== */}
 
-          <p className="mt-1 text-[13px] text-[#8A9099]">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            All Members
+          </h1>
+
+          <p className="mt-0.5 text-xs text-slate-400">
             All Members Information
           </p>
         </div>
 
-        {/* User information */}
-        <div className="flex items-center">
-          <div className="flex h-11 items-center gap-2 rounded-xl border border-[#E3E6EA] bg-white px-3 shadow-sm">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B57D0] text-xs font-bold text-white">
-              {getInitials(user?.fullName)}
-            </div>
+        {/* USER BADGE */}
 
-            <div className="leading-tight">
-              <p className="max-w-[120px] truncate text-xs font-semibold text-[#20242A]">
-                {user?.fullName}
-              </p>
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-3 py-1.5 shadow-sm dark:border-slate-800 dark:bg-[#11161D]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">
+            {userInitials || "U"}
+          </div>
 
-              <p className="text-[10px] uppercase text-[#9298A1]">
-                {user?.role}
-              </p>
-            </div>
+          <div className="pr-1 text-left">
+            <p className="text-xs font-semibold leading-tight text-slate-900 dark:text-slate-100">
+              {userName}
+            </p>
+
+            <p className="text-[9px] font-medium uppercase tracking-wider text-slate-400">
+              {userRole}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* ======================================
+      {/* ===================================================
           MAIN CARD
-      ====================================== */}
-      <div className="rounded-2xl border border-[#E4E7EB] bg-white shadow-[0_2px_8px_rgba(20,30,50,0.03)]">
-        {/* ======================================
-            SEARCH / ACTION BAR
-        ====================================== */}
-        <div className="flex flex-col gap-4 border-b border-[#ECEEF1] px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-          {/* Search */}
-          <div className="relative w-full lg:w-[260px]">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#747A83]">
-              ⌕
-            </span>
+      =================================================== */}
+
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#11161D]">
+        {/* =================================================
+            ACTION BAR
+        ================================================= */}
+
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          {/* SEARCH */}
+
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
             <input
               type="text"
               placeholder="Search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-11 w-full rounded-xl border border-[#E2E5E9] bg-white pl-10 pr-4 text-xs text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-10 pr-4 text-xs font-medium text-slate-700 outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-200"
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-3">
-            {canManageMembers && (
-              <button
-                type="button"
-                onClick={handleAddMember}
-                className="flex h-11 items-center gap-2 rounded-xl bg-[#0B57D0] px-5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0849B5] active:scale-[0.98]"
-              >
-                <span className="text-base leading-none">+</span>
-                Add Member
-              </button>
-            )}
+          {/* BUTTONS */}
 
-            {/* Filter */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAddMember}
+              className="flex items-center gap-1.5 rounded-xl bg-[#0052CC] px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Member
+            </button>
+
             <div className="relative">
               <select
                 value={divisionFilter}
-                onChange={(e) => setDivisionFilter(e.target.value)}
-                className="h-11 appearance-none rounded-xl border border-[#E2E5E9] bg-white py-0 pl-10 pr-9 text-xs font-medium text-[#343940] outline-none transition hover:bg-[#F8F9FA] focus:border-[#0B57D0]"
+                onChange={(event) => setDivisionFilter(event.target.value)}
+                className="cursor-pointer appearance-none rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-8 text-xs font-medium text-slate-600 outline-none transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
               >
-                <option value="All">All Divisions</option>
+                <option value="All">Filter</option>
 
                 {divisions.map((division) => (
                   <option key={division} value={division}>
@@ -380,407 +530,221 @@ const Members = () => {
                 ))}
               </select>
 
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#747A83]">
-                ◇
-              </span>
-
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-[#747A83]">
-                ▼
-              </span>
+              <Filter className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             </div>
           </div>
         </div>
 
-        {/* ======================================
+        {/* =================================================
             ERROR
-        ====================================== */}
+        ================================================= */}
+
         {error && (
-          <div className="mx-5 mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 sm:mx-6">
+          <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-medium text-red-600 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400">
             {error}
           </div>
         )}
 
-        {/* ======================================
-            ADD / EDIT FORM
-        ====================================== */}
-        {showForm && canManageMembers && (
-          <div className="border-b border-[#ECEEF1] bg-[#FAFBFC] px-5 py-6 sm:px-6">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-[#17191C]">
-                  {editingMemberId ? "Edit Member" : "Add New Member"}
-                </h2>
-
-                <p className="mt-1 text-xs text-[#9298A1]">
-                  Enter the member information below.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={resetForm}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg text-[#7A8088] hover:bg-[#EEF0F2] hover:text-[#20242A]"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-                {/* Full Name */}
-                <div>
-                  <label className="mb-2 block text-xs font-semibold text-[#454A52]">
-                    Full Name
-                  </label>
-
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    required
-                    placeholder="John Doe"
-                    className="h-11 w-full rounded-xl border border-[#D7DBE0] bg-white px-3 text-sm text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
-                  />
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="mb-2 block text-xs font-semibold text-[#454A52]">
-                    Email
-                  </label>
-
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    placeholder="john@gmail.com"
-                    className="h-11 w-full rounded-xl border border-[#D7DBE0] bg-white px-3 text-sm text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
-                  />
-                </div>
-
-                {/* Phone */}
-                <div>
-                  <label className="mb-2 block text-xs font-semibold text-[#454A52]">
-                    Phone
-                  </label>
-
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    placeholder="0912345678"
-                    className="h-11 w-full rounded-xl border border-[#D7DBE0] bg-white px-3 text-sm text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
-                  />
-                </div>
-
-                {/* Division */}
-                <div>
-                  <label className="mb-2 block text-xs font-semibold text-[#454A52]">
-                    Division
-                  </label>
-
-                  <input
-                    type="text"
-                    name="division"
-                    value={formData.division}
-                    onChange={handleChange}
-                    required
-                    placeholder="IT"
-                    className="h-11 w-full rounded-xl border border-[#D7DBE0] bg-white px-3 text-sm text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
-                  />
-                </div>
-
-                {/* Year */}
-                <div>
-                  <label className="mb-2 block text-xs font-semibold text-[#454A52]">
-                    Year
-                  </label>
-
-                  <input
-                    type="number"
-                    name="year"
-                    value={formData.year}
-                    onChange={handleChange}
-                    required
-                    min="1"
-                    placeholder="4"
-                    className="h-11 w-full rounded-xl border border-[#D7DBE0] bg-white px-3 text-sm text-[#20242A] outline-none placeholder:text-[#A0A5AC] focus:border-[#0B57D0] focus:ring-2 focus:ring-[#0B57D0]/10"
-                  />
-                </div>
-              </div>
-
-              {/* Form buttons */}
-              <div className="mt-5 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="h-10 rounded-xl border border-[#E0E3E7] bg-white px-5 text-xs font-semibold text-[#555B64] transition hover:bg-[#F3F4F6]"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="h-10 rounded-xl bg-[#0B57D0] px-5 text-xs font-semibold text-white transition hover:bg-[#0849B5] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving
-                    ? "Saving..."
-                    : editingMemberId
-                      ? "Update Member"
-                      : "Create Member"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* ======================================
+        {/* =================================================
             TABLE
-        ====================================== */}
+        ================================================= */}
+
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse">
+          <table className="w-full min-w-[900px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-[#ECEEF1] text-left">
-                <th className="px-6 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Member Name
-                </th>
+              <tr className="border-b border-slate-100 text-[10px] font-semibold text-slate-400 dark:border-slate-800">
+                <th className="pb-3 pl-1 font-medium">Member Name</th>
 
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Member ID
-                </th>
+                <th className="pb-3 font-medium">Member ID</th>
 
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Division
-                </th>
+                <th className="pb-3 font-medium">Division</th>
 
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Attendance
-                </th>
+                <th className="pb-3 font-medium">Attendance</th>
 
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Year
-                </th>
+                <th className="pb-3 font-medium">Year</th>
 
-                <th className="px-4 py-4 text-[11px] font-semibold text-[#969BA3]">
-                  Status
-                </th>
+                <th className="pb-3 font-medium">Status</th>
 
-                <th className="px-6 py-4 text-right text-[11px] font-semibold text-[#969BA3]">
-                  Action
-                </th>
+                <th className="pb-3 pr-2 text-right font-medium">Action</th>
               </tr>
             </thead>
 
-            <tbody>
-              {/* Loading */}
+            <tbody className="divide-y divide-slate-100 text-[11px] dark:divide-slate-800/60">
+              {/* LOADING */}
+
               {loading && (
                 <tr>
-                  <td colSpan="7" className="px-6 py-16 text-center">
-                    <div className="mx-auto mb-3 h-7 w-7 animate-spin rounded-full border-2 border-[#DCE1E7] border-t-[#0B57D0]" />
-
-                    <p className="text-xs font-medium text-[#8C929A]">
-                      Loading members...
-                    </p>
-                  </td>
-                </tr>
-              )}
-
-              {/* No members */}
-              {!loading && displayedMembers.length === 0 && (
-                <tr>
-                  <td colSpan="7" className="px-6 py-16 text-center">
-                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#F0F2F5] text-xl text-[#7C828A]">
-                      👤
-                    </div>
-
-                    <p className="text-sm font-semibold text-[#343940]">
-                      No members found
-                    </p>
-
-                    <p className="mt-1 text-xs text-[#9298A1]">
-                      Try changing your search or filter.
-                    </p>
-                  </td>
-                </tr>
-              )}
-
-              {/* Members */}
-              {!loading &&
-                displayedMembers.map((member, index) => (
-                  <tr
-                    key={member._id}
-                    className="border-b border-[#F0F1F3] transition hover:bg-[#FAFBFC]"
+                  <td
+                    colSpan="7"
+                    className="py-12 text-center text-xs text-slate-400"
                   >
-                    {/* Name */}
-                    <td className="px-6 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E7EEF9] text-[10px] font-bold text-[#0B57D0]">
-                          {member.avatar ? (
-                            <img
-                              src={member.avatar}
-                              alt={member.fullName}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            getInitials(member.fullName)
-                          )}
+                    Loading members...
+                  </td>
+                </tr>
+              )}
+
+              {/* EMPTY */}
+
+              {!loading && paginatedMembers.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="7"
+                    className="py-12 text-center text-xs text-slate-400"
+                  >
+                    {search || divisionFilter !== "All"
+                      ? "No members match your search."
+                      : "No members found."}
+                  </td>
+                </tr>
+              )}
+
+              {/* MEMBERS */}
+
+              {!loading &&
+                paginatedMembers.map((member, index) => {
+                  const globalIndex = startIndex + index;
+
+                  const uiData = getUiMemberData(globalIndex);
+
+                  return (
+                    <tr
+                      key={member._id}
+                      className="transition hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
+                    >
+                      {/* MEMBER NAME */}
+
+                      <td className="py-3 pl-1">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={uiData.avatar}
+                            alt={member.fullName}
+                            className="h-7 w-7 rounded-full object-cover"
+                          />
+
+                          <div>
+                            <p className="font-semibold text-slate-900 dark:text-slate-100">
+                              {member.fullName}
+                            </p>
+
+                            <p className="mt-0.5 text-[9px] text-slate-400">
+                              {member.email}
+                            </p>
+                          </div>
                         </div>
+                      </td>
 
-                        <div>
-                          <p className="text-xs font-semibold text-[#30343A]">
-                            {member.fullName}
-                          </p>
+                      {/* MEMBER ID
+                          UI ONLY */}
 
-                          <p className="mt-0.5 text-[10px] text-[#A0A5AC]">
-                            {member.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+                      <td className="py-3 font-medium text-slate-500 dark:text-slate-400">
+                        {uiData.memberId}
+                      </td>
 
-                    {/* ID */}
-                    <td className="px-4 py-3.5 text-xs text-[#555B64]">
-                      {getMemberId(member, index)}
-                    </td>
+                      {/* DIVISION
+                          BACKEND */}
 
-                    {/* Division */}
-                    <td className="px-4 py-3.5 text-xs text-[#555B64]">
-                      {member.division || "-"}
-                    </td>
+                      <td className="py-3 font-medium text-slate-700 dark:text-slate-300">
+                        {member.division || "-"}
+                      </td>
 
-                    {/* Attendance */}
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex items-center rounded-md bg-[#EAF8F0] px-2 py-1 text-[10px] font-semibold text-[#2DB66D]">
-                        Active
-                      </span>
-                    </td>
+                      {/* ATTENDANCE
+                          UI ONLY */}
 
-                    {/* Year */}
-                    <td className="px-4 py-3.5 text-xs text-[#555B64]">
-                      {formatYear(member.year)}
-                    </td>
+                      <td className="py-3">
+                        {getAttendanceBadge(uiData.attendance)}
+                      </td>
 
-                    {/* Status */}
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex rounded-md bg-[#EEF0FF] px-2 py-1 text-[10px] font-semibold text-[#6673C8]">
-                        On Campus
-                      </span>
-                    </td>
+                      {/* YEAR
+                          BACKEND */}
 
-                    {/* Actions */}
-                    <td className="px-6 py-3.5 text-right">
-                      {canManageMembers ? (
-                        <div className="flex justify-end gap-3">
-                          {/* Edit */}
+                      <td className="py-3 font-medium text-slate-600 dark:text-slate-400">
+                        {formatYear(member.year)}
+                      </td>
+
+                      {/* STATUS
+                          UI ONLY */}
+
+                      <td className="py-3">{getStatusBadge(uiData.status)}</td>
+
+                      {/* ACTIONS */}
+
+                      <td className="py-3 pr-2">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* EDIT */}
+
                           <button
                             type="button"
-                            onClick={() => handleEdit(member)}
+                            onClick={() => handleEditMember(member)}
+                            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                             title="Edit member"
-                            className="text-[#676D75] transition hover:text-[#0B57D0]"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M12 20h9" />
-                              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                            </svg>
+                            <Edit3 className="h-3.5 w-3.5" />
                           </button>
 
-                          {/* Delete */}
-                          {user?.role === "admin" && (
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(member._id)}
-                              disabled={deletingId === member._id}
-                              title="Delete member"
-                              className="text-[#676D75] transition hover:text-[#E34D59] disabled:opacity-40"
-                            >
-                              {deletingId === member._id ? (
-                                <span className="text-xs">...</span>
-                              ) : (
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M3 6h18" />
-                                  <path d="M8 6V4h8v2" />
-                                  <path d="M19 6l-1 14H6L5 6" />
-                                  <path d="M10 11v5" />
-                                  <path d="M14 11v5" />
-                                </svg>
-                              )}
-                            </button>
-                          )}
+                          {/* DELETE */}
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMember(member)}
+                            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/40"
+                            title="Delete member"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                      ) : (
-                        <span className="text-[10px] text-[#A0A5AC]">
-                          View only
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
 
-        {/* ======================================
-            PAGINATION
-        ====================================== */}
-        <div className="flex flex-col gap-4 border-t border-[#ECEEF1] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-[11px] text-[#8D939B]">
+        {/* =================================================
+            FOOTER / PAGINATION
+        ================================================= */}
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4 text-[10px] text-slate-400 dark:border-slate-800">
+          {/* RECORDS */}
+
+          <div className="flex items-center gap-2">
             <span>Showing</span>
 
             <select
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="rounded-md border border-[#E1E4E8] bg-white px-2 py-1 text-[11px] text-[#555B64] outline-none"
+              value={recordsPerPage}
+              onChange={(event) =>
+                setRecordsPerPage(Number(event.target.value))
+              }
+              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-700 outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
             >
               <option value={10}>10</option>
-              <option value={25}>25</option>
+              <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
 
             <span>
               Showing {filteredMembers.length === 0 ? 0 : startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredMembers.length)} out
-              of {filteredMembers.length} records
+              {Math.min(startIndex + recordsPerPage, filteredMembers.length)}{" "}
+              out of {filteredMembers.length} records
             </span>
           </div>
 
+          {/* PAGE BUTTONS */}
+
           <div className="flex items-center gap-1">
-            {/* Previous */}
+            {/* PREVIOUS */}
+
             <button
               type="button"
               disabled={safeCurrentPage === 1}
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-xs text-[#777D85] transition hover:bg-[#F1F3F5] disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
             >
-              ‹
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
 
-            {/* Pages */}
+            {/* PAGE NUMBERS */}
+
             {Array.from({ length: totalPages }, (_, index) => index + 1)
               .slice(0, 5)
               .map((page) => (
@@ -788,30 +752,187 @@ const Members = () => {
                   key={page}
                   type="button"
                   onClick={() => setCurrentPage(page)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg text-[11px] font-semibold transition ${
+                  className={`flex h-7 min-w-7 items-center justify-center rounded-lg px-2 text-[10px] font-medium transition ${
                     safeCurrentPage === page
-                      ? "bg-[#0B57D0] text-white shadow-sm"
-                      : "text-[#777D85] hover:bg-[#F1F3F5]"
+                      ? "bg-[#0052CC] font-bold text-white shadow-sm"
+                      : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`}
                 >
                   {page}
                 </button>
               ))}
 
-            {/* Next */}
+            {/* NEXT */}
+
             <button
               type="button"
               disabled={safeCurrentPage === totalPages}
               onClick={() =>
                 setCurrentPage((page) => Math.min(totalPages, page + 1))
               }
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-xs text-[#777D85] transition hover:bg-[#F1F3F5] disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
             >
-              ›
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
       </div>
+
+      {/* ===================================================
+          ADD / EDIT MEMBER MODAL
+      =================================================== */}
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-[#11161D]">
+            {/* MODAL HEADER */}
+
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                  {editingMember ? "Edit Member" : "Add Member"}
+                </h2>
+
+                <p className="mt-1 text-[11px] text-slate-400">
+                  {editingMember
+                    ? "Update member information"
+                    : "Add a new member to the system"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* FORM ERROR */}
+
+            {formError && (
+              <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-600 dark:bg-red-950/20 dark:text-red-400">
+                {formError}
+              </div>
+            )}
+
+            {/* FORM */}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* FULL NAME */}
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                  Full Name
+                </label>
+
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleFormChange}
+                  placeholder="Enter full name"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* EMAIL */}
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleFormChange}
+                  placeholder="example@gmail.com"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* PHONE */}
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                  Phone
+                </label>
+
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleFormChange}
+                  placeholder="Phone number"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* DIVISION */}
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                  Division
+                </label>
+
+                <input
+                  type="text"
+                  name="division"
+                  value={formData.division}
+                  onChange={handleFormChange}
+                  placeholder="Development"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* YEAR */}
+
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                  Year
+                </label>
+
+                <input
+                  type="number"
+                  name="year"
+                  min="1"
+                  value={formData.year}
+                  onChange={handleFormChange}
+                  placeholder="4"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* ACTIONS */}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl bg-[#0052CC] px-5 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving
+                    ? "Saving..."
+                    : editingMember
+                      ? "Update Member"
+                      : "Add Member"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
