@@ -58,7 +58,15 @@ const AppRoutes = () => {
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/members" element={<Members />} />
+
+          <Route
+            path="/members"
+            element={
+              <RoleRoute allowedRoles={["admin", "supervisor", "user"]}>
+                <Members />
+              </RoleRoute>
+            }
+          />
 
           <Route
             path="/attendance"
@@ -69,7 +77,14 @@ const AppRoutes = () => {
             }
           />
 
-          <Route path="/settings" element={<Settings />} />
+          <Route
+            path="/settings"
+            element={
+              <RoleRoute allowedRoles={["admin"]}>
+                <Settings />
+              </RoleRoute>
+            }
+          />
         </Route>
       </Route>
 

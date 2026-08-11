@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { Eye, EyeOff } from "lucide-react";
+import logoipsum from "../logoipsum.png";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,6 +28,7 @@ const Login = () => {
       });
 
       const { user, token } = response.data;
+
       login(user, token);
       navigate("/dashboard");
     } catch (err) {
@@ -42,22 +43,20 @@ const Login = () => {
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[#F8FAFC] p-4 dark:bg-slate-950">
-      {/* Centered Card */}
       <div className="w-full max-w-[440px] rounded-3xl bg-white p-10 shadow-sm dark:border dark:border-slate-800 dark:bg-[#11161D]">
-        {/* Brand Logo Header */}
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0052CC] text-sm font-bold text-white">
-            S
-          </div>
-          <span className="text-lg font-bold text-slate-900 dark:text-white">
-            Logoipsum
-          </span>
+        <div className="mb-8 flex items-center justify-center">
+          <img
+            src={logoipsum}
+            alt="Logoipsum"
+            className="h-auto w-[125px] object-contain"
+          />
         </div>
 
         <div className="mb-6 text-left">
           <h1 className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 dark:text-white">
             Welcome <span className="text-xl">👋</span>
           </h1>
+
           <p className="mt-1 text-xs text-slate-400">Please login here</p>
         </div>
 
@@ -75,6 +74,7 @@ const Login = () => {
             >
               Email Address
             </label>
+
             <input
               id="email"
               type="email"
@@ -93,6 +93,7 @@ const Login = () => {
             >
               Password
             </label>
+
             <input
               id="password"
               type={showPassword ? "text" : "password"}
@@ -102,6 +103,7 @@ const Login = () => {
               required
               className="w-full rounded-2xl border border-slate-200 bg-transparent py-3 pl-4 pr-10 text-xs text-slate-800 placeholder-slate-300 outline-none transition-all focus:border-[#0052CC] dark:border-slate-700 dark:text-slate-200 dark:placeholder-slate-600"
             />
+
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
@@ -123,6 +125,7 @@ const Login = () => {
               onChange={(e) => setRememberMe(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-[#0052CC] focus:ring-[#0052CC]"
             />
+
             <label
               htmlFor="remember"
               className="cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-400"

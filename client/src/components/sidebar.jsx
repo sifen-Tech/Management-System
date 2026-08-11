@@ -7,35 +7,43 @@ import {
   Settings,
   Sun,
   Moon,
+  LogOut,
 } from "lucide-react";
+import logoipsum from "../logoipsum.png";
 
-const Sidebar = ({ menuItems = [] }) => {
+const Sidebar = ({ menuItems = [], onLogout }) => {
   const { theme, toggleTheme } = useTheme();
 
   const getIcon = (label) => {
     const lower = label?.toLowerCase() || "";
-    if (lower.includes("dashboard"))
+
+    if (lower.includes("dashboard")) {
       return <LayoutDashboard className="w-4 h-4" />;
-    if (lower.includes("member")) return <Users className="w-4 h-4" />;
-    if (lower.includes("attendance"))
+    }
+
+    if (lower.includes("member")) {
+      return <Users className="w-4 h-4" />;
+    }
+
+    if (lower.includes("attendance")) {
       return <CalendarCheck className="w-4 h-4" />;
-    if (lower.includes("setting")) return <Settings className="w-4 h-4" />;
+    }
+
+    if (lower.includes("setting")) {
+      return <Settings className="w-4 h-4" />;
+    }
+
     return null;
   };
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[220px] flex-col border-r border-slate-200/80 bg-white px-4 py-6 dark:border-slate-800 dark:bg-[#0E131A]">
-      {/* Brand Header */}
-      <div className="mb-8 flex items-center gap-3 px-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-sm">
-          L
-        </div>
-        <div>
-          <h1 className="text-sm font-bold text-slate-900 dark:text-white">
-            Logoipsum
-          </h1>
-          <p className="text-[10px] text-slate-400">Management System</p>
-        </div>
+      <div className="mb-8 flex items-center px-2">
+        <img
+          src={logoipsum}
+          alt="Logoipsum"
+          className="h-auto w-[105px] object-contain"
+        />
       </div>
 
       <nav className="flex-1 space-y-1">
@@ -57,7 +65,7 @@ const Sidebar = ({ menuItems = [] }) => {
         ))}
       </nav>
 
-      <div className="mt-auto">
+      <div className="mt-auto space-y-3">
         <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800/60">
           <button
             type="button"
@@ -85,6 +93,17 @@ const Sidebar = ({ menuItems = [] }) => {
             <span>Dark</span>
           </button>
         </div>
+
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex w-full h-10 items-center gap-3 rounded-xl px-3.5 text-xs font-medium text-red-500 transition-all hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Sign Out</span>
+          </button>
+        )}
       </div>
     </aside>
   );

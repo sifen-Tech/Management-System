@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { Eye, EyeOff } from "lucide-react";
+import logoipsum from "../logoipsum.png";
 
 const Signup = () => {
   const [fullName, setFullName] = useState("");
@@ -52,15 +53,12 @@ const Signup = () => {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[#F8FAFC] p-4 dark:bg-slate-950">
       <div className="w-full max-w-[440px] rounded-3xl bg-white p-10 shadow-sm dark:border dark:border-slate-800 dark:bg-[#11161D]">
-        {/* Brand Logo */}
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0052CC] text-sm font-bold text-white">
-            S
-          </div>
-
-          <span className="text-lg font-bold text-slate-900 dark:text-white">
-            Logoipsum
-          </span>
+        <div className="mb-8 flex items-center justify-center">
+          <img
+            src={logoipsum}
+            alt="Logoipsum"
+            className="h-auto w-[125px] object-contain"
+          />
         </div>
 
         <div className="mb-6 text-left">
