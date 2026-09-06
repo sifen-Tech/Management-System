@@ -16,6 +16,23 @@ const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const demoAccounts = {
+    admin: {
+      email: "admin@management.com",
+      password: "12345Abc$",
+    },
+    student: {
+      email: "albert@gmail.com",
+      password: "123albert!AB",
+    },
+  };
+
+  const fillDemoAccount = (account) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setError("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -44,6 +61,7 @@ const Login = () => {
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[#F8FAFC] p-4 dark:bg-slate-950">
       <div className="w-full max-w-[440px] rounded-3xl bg-white p-10 shadow-sm dark:border dark:border-slate-800 dark:bg-[#11161D]">
+        {/* Logo */}
         <div className="mb-8 flex items-center justify-center">
           <img
             src={logoipsum}
@@ -52,6 +70,7 @@ const Login = () => {
           />
         </div>
 
+        {/* Heading */}
         <div className="mb-6 text-left">
           <h1 className="flex items-center gap-1.5 text-2xl font-bold text-slate-900 dark:text-white">
             Welcome <span className="text-xl">👋</span>
@@ -60,13 +79,16 @@ const Login = () => {
           <p className="mt-1 text-xs text-slate-400">Please login here</p>
         </div>
 
+        {/* Error */}
         {error && (
           <div className="mb-4 rounded-xl bg-rose-50 p-3 text-left text-xs text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
             {error}
           </div>
         )}
 
+        {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email */}
           <div className="relative">
             <label
               htmlFor="email"
@@ -86,6 +108,7 @@ const Login = () => {
             />
           </div>
 
+          {/* Password */}
           <div className="relative">
             <label
               htmlFor="password"
@@ -117,6 +140,7 @@ const Login = () => {
             </button>
           </div>
 
+          {/* Remember Me */}
           <div className="flex items-center gap-2 pt-0.5">
             <input
               id="remember"
@@ -134,6 +158,7 @@ const Login = () => {
             </label>
           </div>
 
+          {/* Login Button */}
           <button
             type="submit"
             disabled={loading}
@@ -143,6 +168,53 @@ const Login = () => {
           </button>
         </form>
 
+        {/* Demo Accounts */}
+        <div className="mt-7 border-t border-slate-100 pt-6 dark:border-slate-800">
+          <div className="mb-3 text-center">
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Demo Accounts
+            </p>
+            <p className="mt-1 text-[10px] text-slate-400">
+              Click an account to fill the login details
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => fillDemoAccount(demoAccounts.admin)}
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition-all hover:border-[#0052CC] hover:bg-blue-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#0052CC] dark:hover:bg-blue-950/30"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  Admin
+                </span>
+              </div>
+
+              <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">
+                admin@management.com
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fillDemoAccount(demoAccounts.student)}
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition-all hover:border-[#0052CC] hover:bg-blue-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:hover:border-[#0052CC] dark:hover:bg-blue-950/30"
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  Student
+                </span>
+              </div>
+
+              <p className="truncate text-[10px] text-slate-500 dark:text-slate-400">
+                albert@gmail.com
+              </p>
+            </button>
+          </div>
+        </div>
+
+        {/* Sign Up */}
         <p className="mt-6 text-left text-xs text-slate-500 dark:text-slate-400">
           Don't have an account?{" "}
           <button
